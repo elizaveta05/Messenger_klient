@@ -9,9 +9,9 @@
               <option name="connection">
                 <ConnectionSetting>
                   <option name="appId" value="com.example.messenger" />
-                  <option name="mobileSdkAppId" value="1:919831261655:android:561fccc0380482b53cdb92" />
-                  <option name="projectId" value="messenger-7c266" />
-                  <option name="projectNumber" value="919831261655" />
+                  <option name="mobileSdkAppId" value="1:324275905125:android:b32aa7485e919acb535c8c" />
+                  <option name="projectId" value="messenger-151eb" />
+                  <option name="projectNumber" value="324275905125" />
                 </ConnectionSetting>
               </option>
               <option name="signal" value="SIGNAL_UNSPECIFIED" />

@@ -28,6 +28,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.example.messenger.Chats;
 import com.example.messenger.CustomSpinnerAdapter;
 import com.example.messenger.PhoneTextWatcher;
+import com.example.messenger.Profile;
 import com.example.messenger.R;
 import com.example.messenger.Users;
 import com.example.messenger.reotrfit.Api;
@@ -332,6 +333,9 @@ public class Registration extends AppCompatActivity {
             public void onResponse(Call<Users> call, Response<Users> response) {
                 if (response.isSuccessful()) {
                     Toast.makeText(Registration.this, "Пользователь успешно зарегистрирован", Toast.LENGTH_SHORT).show();
+                    Intent intent = new Intent(Registration.this, Profile.class);
+                    startActivity(intent);
+                    overridePendingTransition(0, 0); // Убрать анимацию перехода
                 } else {
                     Toast.makeText(Registration.this, "Ошибка регистрации", Toast.LENGTH_SHORT).show();
                 }
