@@ -8,6 +8,7 @@ import java.util.List;
 
 import retrofit2.Call;
 import retrofit2.http.Body;
+import retrofit2.http.DELETE;
 import retrofit2.http.GET;
 import retrofit2.http.POST;
 import retrofit2.http.Path;
@@ -15,13 +16,22 @@ import retrofit2.http.Path;
 
 public interface Api {
 
-    //Метод создания профиля пользователя
+    // Метод создания профиля пользователя
     @POST("/users/createUser")
     Call<Users> registerUser(@Body Users newUser);
 
-    //Метод получения всех логинов пользователей
-    @GET("/getUsersLogin")
+    // Метод получения всех логинов пользователей
+    @GET("/users/getUsersLogin")
     Call<List<String>> getUsersLogin();
+
+    // Метод получения данных профиля для конкретного пользователя
+    @GET("/users/getProfileUser/{userId}")
+    Call<Users> getProfileUser(@Path("userId") String userId);
+
+    // Метод удаления профиля пользователя
+    @DELETE("/users/deleteProfileUser/{userId}")
+    Call<String> deleteProfileUser(@Path("userId") String userId);
+
 
     @GET("/app/getAllChatsForUser/{senderId}")
     Call<List<Chat>> getAllChatsForUser(@Path("senderId") String senderId);

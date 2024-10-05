@@ -35,6 +35,10 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
 import com.example.messenger.Authentication.MainActivity;
+import com.example.messenger.Authentication.Registration;
+import com.example.messenger.Model.Users;
+import com.example.messenger.Reotrfit.Api;
+import com.example.messenger.Reotrfit.RetrofitService;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 import com.google.firebase.auth.FirebaseAuth;
@@ -51,6 +55,9 @@ import java.util.HashMap;
 import java.util.Map;
 
 import de.hdodenhof.circleimageview.CircleImageView;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 public class Profile extends AppCompatActivity {
 
@@ -64,6 +71,8 @@ public class Profile extends AppCompatActivity {
     private String photoUrlBD, loginBD, phoneNumber, newphotoUrl, newLogin;
     private TextInputLayout textInputLayoutLogin;
     private boolean isChange;
+    private RetrofitService retrofitService;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -75,8 +84,14 @@ public class Profile extends AppCompatActivity {
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
             return insets;
         });
+
+        // Инициализируем RetrofitService
+        retrofitService = new RetrofitService();
+
         isChange = false;
         mAuth = FirebaseAuth.getInstance();
+        currentUser = mAuth.getCurrentUser(); // Получение текущего пользователя
+
         btn_function_list = findViewById(R.id.btn_function_list);
         btn_function_list.setOnClickListener(v -> {
             String[] actions = {"Выйти из аккаунта", "Удалить аккаунт", "Заблокированные контакты"};
@@ -137,7 +152,7 @@ public class Profile extends AppCompatActivity {
                 builder.setPositiveButton("Изменить", (dialog, which) -> requestPermissionLauncher.launch("image/*"));
                 builder.setNegativeButton("Удалить", (dialog, which) -> {
                     deletePhotoFromStorage(photoUrlBD);
-                    saveUserDataToFirestore(currentUser, loginBD, null);
+                    saveUserData(currentUser, loginBD, null);
                     image_photo.setImageResource(R.drawable.icon_user);
                 });
 
@@ -199,7 +214,7 @@ public class Profile extends AppCompatActivity {
         btn_save = findViewById(R.id.btn_save);
         btn_save.setVisibility(View.INVISIBLE);
         btn_save.setOnClickListener(v -> {
-            saveUserDataToFirestore(currentUser, newLogin, photoUrlBD);
+            saveUserData(currentUser, newLogin, photoUrlBD);
             et_login.setEnabled(false);
             loginBD=newLogin;
             isChange=false;
@@ -223,37 +238,55 @@ public class Profile extends AppCompatActivity {
         });
         btn_add = findViewById(R.id.btn_add);
         image_photo = findViewById(R.id.image_photo_user);
-        loadUserDataFromFirestore();
+        loadUserData();
 
     }
-    private void loadUserDataFromFirestore() {
-        FirebaseFirestore db = FirebaseFirestore.getInstance();
-        currentUser = FirebaseAuth.getInstance().getCurrentUser();
 
+    //Метод получения данных пользователя
+    private void loadUserData() {
         if (currentUser != null) {
-            DocumentReference userRef = db.collection("Users").document(currentUser.getUid());
-            userRef.get()
-                    .addOnSuccessListener(documentSnapshot -> {
-                        if (documentSnapshot.exists()) {
-                            loginBD = documentSnapshot.getString("login");
-                            phoneNumber = documentSnapshot.getString("phoneNumber");
-                            photoUrlBD = documentSnapshot.getString("photoUrl");
+            String userId = currentUser.getUid(); // Получаем ID текущего пользователя
+
+            // Получаем Api сервис
+            Api apiService = retrofitService.getRetrofit().create(Api.class);
+
+            // Получаем данные профиля пользователя
+            Call<Users> call = apiService.getProfileUser(userId);
+
+            call.enqueue(new Callback<Users>() {
+                @Override
+                public void onResponse(Call<Users> call, Response<Users> response) {
+                    if (response.isSuccessful()) {
+                        // Получаем данные профиля пользователя
+                        Users registeredUser = response.body();
+                        if (registeredUser != null) {
+                            // Извлекаем данные
+                            loginBD = registeredUser.getLogin();
+                            phoneNumber = registeredUser.getPhoneNumber();
+                            photoUrlBD = String.valueOf(registeredUser.getPhotoUrl());
 
                             et_login.setText(loginBD);
                             et_phoneNumber.setText(phoneNumber);
 
+                            // Загружаем фотографию
                             Picasso.get()
                                     .load(photoUrlBD)
                                     .placeholder(R.drawable.icon_user)
                                     .error(R.drawable.icon_user)
                                     .into(image_photo);
-                        } else {
-                            Toast.makeText(Profile.this, "Данные пользователя не найдены", Toast.LENGTH_SHORT).show();
                         }
-                    })
-                    .addOnFailureListener(e -> {
-                        Toast.makeText(Profile.this, "Ошибка при загрузке данных пользователя: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                    });
+                    } else {
+                        Toast.makeText(Profile.this, "Ошибка получения данных", Toast.LENGTH_SHORT).show();
+                    }
+                }
+
+                @Override
+                public void onFailure(Call<Users> call, Throwable t) {
+                    Toast.makeText(Profile.this, "Ошибка сети: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+                }
+            });
+        } else {
+            Toast.makeText(Profile.this, "Пользователь не аутентифицирован", Toast.LENGTH_SHORT).show();
         }
     }
     private boolean isValidLogin(String login) {
@@ -275,22 +308,8 @@ public class Profile extends AppCompatActivity {
 
         return true;
     }
-    private void saveUserDataToFirestore(FirebaseUser user, String login, String photoUrl) {
-        FirebaseFirestore db = FirebaseFirestore.getInstance();
+    private void saveUserData(FirebaseUser user, String login, String photoUrl) {
 
-        Map<String, Object> userData = new HashMap<>();
-        userData.put("login", login);
-        userData.put("phoneNumber", phoneNumber);
-        userData.put("photoUrl", photoUrl);
-
-        db.collection("Users")
-                .document(user.getUid())
-                .set(userData)
-                .addOnSuccessListener(aVoid -> {
-                    Toast.makeText(Profile.this, "Данные успешно изменены", Toast.LENGTH_SHORT).show();
-
-                })
-                .addOnFailureListener(e -> Toast.makeText(Profile.this, "Ошибка записи данных пользователя: " + e.getMessage(), Toast.LENGTH_SHORT).show());
     }
     ActivityResultLauncher<String> requestPermissionLauncher = registerForActivityResult(new ActivityResultContracts.GetContent(),
             new ActivityResultCallback<Uri>() {
@@ -320,14 +339,14 @@ public class Profile extends AppCompatActivity {
             uploadTask.addOnSuccessListener(taskSnapshot -> {
                 storageRef.getDownloadUrl().addOnSuccessListener(uri -> {
                     newphotoUrl = uri.toString();
-                    saveUserDataToFirestore(user, loginBD, newphotoUrl);
+                    saveUserData(user, loginBD, newphotoUrl);
                     photoUrlBD=newphotoUrl;
                 });
             }).addOnFailureListener(e -> {
                 Toast.makeText(Profile.this, "Ошибка загрузки изображения", Toast.LENGTH_SHORT).show();
             });
         } else {
-            saveUserDataToFirestore(user, loginBD, null);
+            saveUserData(user, loginBD, null);
         }
     }
     private void deletePhotoFromStorage(String photoUrl) {

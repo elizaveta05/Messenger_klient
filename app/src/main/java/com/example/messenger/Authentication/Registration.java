@@ -73,21 +73,6 @@ public class Registration extends AppCompatActivity {
     private List<String> allLogins;
     private RetrofitService retrofitService;
 
-    ActivityResultLauncher<String> requestPermissionLauncher = registerForActivityResult(new ActivityResultContracts.GetContent(),
-            new ActivityResultCallback<Uri>() {
-                @Override
-                public void onActivityResult(Uri result) {
-                    try {
-                        selectedImageBitmap = MediaStore.Images.Media.getBitmap(getContentResolver(), result);
-                        photoImageView.setImageBitmap(selectedImageBitmap);
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                        Toast.makeText(getApplicationContext(), "Failed to load image", Toast.LENGTH_SHORT).show();
-                    }
-                }
-            });
-
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -102,9 +87,10 @@ public class Registration extends AppCompatActivity {
         new PhoneTextWatcher(et_phone);
         mAuth = FirebaseAuth.getInstance();
 
-
         // Инициализируем RetrofitService
         retrofitService = new RetrofitService();
+        fetchExistingUserLogins();
+
         btn_back = findViewById(R.id.btn_back);
         btn_back.setOnClickListener(v->{
             Intent intent = new Intent(Registration.this, MainActivity.class);
@@ -112,16 +98,15 @@ public class Registration extends AppCompatActivity {
             overridePendingTransition(0, 0); // Убрать анимацию перехода
         });
 
-        fetchExistingUserLogins();
         TextInputLayout textInputLayoutLogin = findViewById(R.id.textInputLayoutLogin);
 
         EditText et_login = textInputLayoutLogin.getEditText();
+
         if (et_login != null) {
 
             et_login.addTextChangedListener(new TextWatcher() {
                 @Override
-                public void beforeTextChanged(CharSequence s, int start, int count, int after) {
-                }
+                public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
 
                 @Override
                 public void onTextChanged(CharSequence s, int start, int before, int count) {}
@@ -140,7 +125,6 @@ public class Registration extends AppCompatActivity {
                 }
             });
         }
-
 
         ImageButton btnMessage = findViewById(R.id.btn_messege);
         btnMessage.setOnClickListener(v -> {
@@ -169,6 +153,7 @@ public class Registration extends AppCompatActivity {
         countries.add("Индия");
         countries.add("Австралия");
 
+        //Метод установки кода телефона в зависимости от выбора страны
         CustomSpinnerAdapter adapter = new CustomSpinnerAdapter(this, android.R.layout.simple_spinner_item, countries);
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinner.setAdapter(adapter);
@@ -214,6 +199,7 @@ public class Registration extends AppCompatActivity {
                 Toast.makeText(Registration.this, "Ошибка! Проверьте введенные данные", Toast.LENGTH_SHORT).show();
             }
         });
+
         mCallbacks = new PhoneAuthProvider.OnVerificationStateChangedCallbacks() {
             @Override
             public void onVerificationCompleted(@NonNull PhoneAuthCredential phoneAuthCredential) {
@@ -262,6 +248,23 @@ public class Registration extends AppCompatActivity {
             }
         };
     }
+
+    //Метод для выбора изображения пользователем
+    ActivityResultLauncher<String> requestPermissionLauncher = registerForActivityResult(new ActivityResultContracts.GetContent(),
+            new ActivityResultCallback<Uri>() {
+                @Override
+                public void onActivityResult(Uri result) {
+                    try {
+                        selectedImageBitmap = MediaStore.Images.Media.getBitmap(getContentResolver(), result);
+                        photoImageView.setImageBitmap(selectedImageBitmap);
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        Toast.makeText(getApplicationContext(), "Failed to load image", Toast.LENGTH_SHORT).show();
+                    }
+                }
+            });
+
+
     private void setEditTextAutoAdvance(final EditText currentEditText, final EditText nextEditText) {
         currentEditText.addTextChangedListener(new TextWatcher() {
             @Override
@@ -386,10 +389,11 @@ public class Registration extends AppCompatActivity {
             @Override
             public void onResponse(Call<List<String>> call, Response<List<String>> response) {
                 if (response.isSuccessful() && response.body() != null) {
+                    // Если запрос успешен и тело ответа не пустое
                     allLogins = response.body();
                     Toast.makeText(Registration.this, "Логины успешно получены: " + allLogins, Toast.LENGTH_SHORT).show();
                 } else {
-                    // Logging response body for troubleshooting
+                    // Если ответ не успешен
                     String errorMessage = response.errorBody() != null ? response.errorBody().toString() : "Unknown Error";
                     Toast.makeText(Registration.this, "Ошибка получения логинов: " + errorMessage, Toast.LENGTH_SHORT).show();
                 }
