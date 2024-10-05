@@ -1,4 +1,4 @@
-package com.example.messenger;
+package com.example.messenger.Model;
 
 import android.net.Uri;
 import android.os.Parcel;

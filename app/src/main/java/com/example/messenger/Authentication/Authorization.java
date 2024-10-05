@@ -1,4 +1,4 @@
-package com.example.messenger.authentication;
+package com.example.messenger.Authentication;
 
 import android.app.Dialog;
 import android.content.Context;

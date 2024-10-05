@@ -1,8 +1,8 @@
-package com.example.messenger.reotrfit;
+package com.example.messenger.Reotrfit;
 
 import com.example.messenger.Chat;
 import com.example.messenger.Message;
-import com.example.messenger.Users;
+import com.example.messenger.Model.Users;
 
 import java.util.List;
 
@@ -15,10 +15,13 @@ import retrofit2.http.Path;
 
 public interface Api {
 
+    //Метод создания профиля пользователя
     @POST("/users/createUser")
     Call<Users> registerUser(@Body Users newUser);
 
-
+    //Метод получения всех логинов пользователей
+    @GET("/getUsersLogin")
+    Call<List<String>> getUsersLogin();
 
     @GET("/app/getAllChatsForUser/{senderId}")
     Call<List<Chat>> getAllChatsForUser(@Path("senderId") String senderId);

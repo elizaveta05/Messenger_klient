@@ -10,6 +10,7 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.example.messenger.Model.Users;
 import com.squareup.picasso.Picasso;
 
 import java.util.ArrayList;

@@ -1,4 +1,4 @@
-package com.example.messenger.authentication;
+package com.example.messenger.Authentication;
 
 import android.content.Intent;
 import android.os.Bundle;

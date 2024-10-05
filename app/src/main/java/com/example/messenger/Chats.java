@@ -18,8 +18,9 @@ import androidx.core.view.WindowInsetsCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.example.messenger.reotrfit.Api;
-import com.example.messenger.reotrfit.RetrofitService;
+import com.example.messenger.Model.Users;
+import com.example.messenger.Reotrfit.Api;
+import com.example.messenger.Reotrfit.RetrofitService;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.gson.Gson;

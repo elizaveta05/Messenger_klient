@@ -6,7 +6,7 @@ import android.os.Handler;
 
 import androidx.appcompat.app.AppCompatActivity;
 
-import com.example.messenger.authentication.MainActivity;
+import com.example.messenger.Authentication.MainActivity;
 
 public class SplashScreen extends AppCompatActivity {
     @Override

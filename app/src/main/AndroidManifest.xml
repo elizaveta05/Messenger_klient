@@ -41,13 +41,13 @@
             android:name=".Profile"
             android:exported="false" />
         <activity
-            android:name=".authentication.Registration"
+            android:name=".Authentication.Registration"
             android:exported="false" />
         <activity
-            android:name=".authentication.Authorization"
+            android:name=".Authentication.Authorization"
             android:exported="false" />
         <activity
-            android:name=".authentication.MainActivity"
+            android:name=".Authentication.MainActivity"
             android:exported="true" />
         <activity
             android:name=".SplashScreen"

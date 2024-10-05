@@ -1,4 +1,4 @@
-package com.example.messenger.authentication;
+package com.example.messenger.Authentication;
 
 import android.app.Dialog;
 import android.content.Intent;
@@ -25,16 +25,13 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
-import com.example.messenger.Chats;
 import com.example.messenger.CustomSpinnerAdapter;
 import com.example.messenger.PhoneTextWatcher;
 import com.example.messenger.Profile;
 import com.example.messenger.R;
-import com.example.messenger.Users;
-import com.example.messenger.reotrfit.Api;
-import com.example.messenger.reotrfit.RetrofitService;
-import com.google.android.gms.tasks.Task;
-import com.google.android.gms.tasks.Tasks;
+import com.example.messenger.Model.Users;
+import com.example.messenger.Reotrfit.Api;
+import com.example.messenger.Reotrfit.RetrofitService;
 import com.google.android.material.textfield.TextInputLayout;
 import com.google.firebase.FirebaseException;
 import com.google.firebase.FirebaseTooManyRequestsException;
@@ -43,20 +40,13 @@ import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.auth.PhoneAuthCredential;
 import com.google.firebase.auth.PhoneAuthProvider;
-import com.google.firebase.firestore.CollectionReference;
-import com.google.firebase.firestore.FirebaseFirestore;
-import com.google.firebase.firestore.QueryDocumentSnapshot;
-import com.google.firebase.firestore.QuerySnapshot;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
 import com.google.firebase.storage.UploadTask;
 
 import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
 import retrofit2.Call;
@@ -102,6 +92,7 @@ public class Registration extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_registration);
+
         spinner = findViewById(R.id.spinner);
         photoImageView = findViewById(R.id.image_photo_user);
         addPhotoButton = findViewById(R.id.btn_add_photo);
@@ -110,6 +101,8 @@ public class Registration extends AppCompatActivity {
         btn_autho = findViewById(R.id.btn_autho);
         new PhoneTextWatcher(et_phone);
         mAuth = FirebaseAuth.getInstance();
+
+
         // Инициализируем RetrofitService
         retrofitService = new RetrofitService();
         btn_back = findViewById(R.id.btn_back);
@@ -119,9 +112,10 @@ public class Registration extends AppCompatActivity {
             overridePendingTransition(0, 0); // Убрать анимацию перехода
         });
 
+        fetchExistingUserLogins();
         TextInputLayout textInputLayoutLogin = findViewById(R.id.textInputLayoutLogin);
-        EditText et_login = textInputLayoutLogin.getEditText();
 
+        EditText et_login = textInputLayoutLogin.getEditText();
         if (et_login != null) {
 
             et_login.addTextChangedListener(new TextWatcher() {
@@ -135,6 +129,7 @@ public class Registration extends AppCompatActivity {
                 @Override
                 public void afterTextChanged(Editable s) {
                     enteredLogin = s.toString();
+
                     boolean isValid = isValidLogin(enteredLogin);
 
                     if (isValid) {
@@ -145,6 +140,8 @@ public class Registration extends AppCompatActivity {
                 }
             });
         }
+
+
         ImageButton btnMessage = findViewById(R.id.btn_messege);
         btnMessage.setOnClickListener(v -> {
             final Toast toast = Toast.makeText(getApplicationContext(), "Логин должен содержать символы a-z, 0-9, подчеркивание и не содержать пробелы." +
@@ -188,6 +185,7 @@ public class Registration extends AppCompatActivity {
             public void onNothingSelected(AdapterView<?> parentView) {
             }
         });
+
         btn_autho.setOnClickListener(v -> {
             phoneNumber = "+" + (et_number.getText().toString() + et_phone.getText().toString().trim()).replaceAll("[^0-9]", "");
             if (spinner.getSelectedItemPosition() == 0) {
@@ -280,6 +278,8 @@ public class Registration extends AppCompatActivity {
             public void afterTextChanged(Editable s) {}
         });
     }
+
+    //Метод проверки аутентификации
     private void signInWithPhoneAuthCredential(PhoneAuthCredential credential) {
         mAuth.signInWithCredential(credential)
                 .addOnCompleteListener(this, task -> {
@@ -347,6 +347,8 @@ public class Registration extends AppCompatActivity {
             }
         });
     }
+
+    //Метод сохраняющий иизображение в Firebase Storage
     private void uploadImageToFirebase(String userId, OnImageUploadCallback callback) {
         // Ссылка на Firebase Storage
         FirebaseStorage storage = FirebaseStorage.getInstance();
@@ -375,6 +377,32 @@ public class Registration extends AppCompatActivity {
         });
     }
 
+    //Метод получения всех логинов существующих пользователей
+    private void fetchExistingUserLogins() {
+        Api apiService = retrofitService.getRetrofit().create(Api.class);
+
+        Call<List<String>> call = apiService.getUsersLogin();
+        call.enqueue(new Callback<List<String>>() {
+            @Override
+            public void onResponse(Call<List<String>> call, Response<List<String>> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    allLogins = response.body();
+                    Toast.makeText(Registration.this, "Логины успешно получены: " + allLogins, Toast.LENGTH_SHORT).show();
+                } else {
+                    // Logging response body for troubleshooting
+                    String errorMessage = response.errorBody() != null ? response.errorBody().toString() : "Unknown Error";
+                    Toast.makeText(Registration.this, "Ошибка получения логинов: " + errorMessage, Toast.LENGTH_SHORT).show();
+                }
+            }
+
+            @Override
+            public void onFailure(Call<List<String>> call, Throwable t) {
+                Toast.makeText(Registration.this, "Ошибка сети: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    //Валидация логина
     private boolean isValidLogin(String login) {
         if (TextUtils.isEmpty(login)) {
             return false;
@@ -398,6 +426,8 @@ public class Registration extends AppCompatActivity {
 
         return true;
     }
+
+    //Метод получения кода страны для номер телефона
     private String getCountryCode(String country) {
         switch (country) {
             case "Россия":
