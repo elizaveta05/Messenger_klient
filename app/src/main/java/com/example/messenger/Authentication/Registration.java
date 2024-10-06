@@ -10,6 +10,7 @@ import android.provider.MediaStore;
 import android.text.Editable;
 import android.text.TextUtils;
 import android.text.TextWatcher;
+import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.Button;
@@ -49,6 +50,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+import okhttp3.MediaType;
+import okhttp3.MultipartBody;
+import okhttp3.RequestBody;
+import okhttp3.ResponseBody;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
@@ -255,8 +260,9 @@ public class Registration extends AppCompatActivity {
                 @Override
                 public void onActivityResult(Uri result) {
                     try {
-                        selectedImageBitmap = MediaStore.Images.Media.getBitmap(getContentResolver(), result);
-                        photoImageView.setImageBitmap(selectedImageBitmap);
+                        selectedImageBitmap = MediaStore.Images.Media.getBitmap(getContentResolver(), result); //Присваиваем выбранное изображение переменной
+
+                        photoImageView.setImageBitmap(selectedImageBitmap); //Установка выбранного изображения в окно отображения
                     } catch (Exception e) {
                         e.printStackTrace();
                         Toast.makeText(getApplicationContext(), "Failed to load image", Toast.LENGTH_SHORT).show();
@@ -294,18 +300,7 @@ public class Registration extends AppCompatActivity {
 
                             // Если изображение выбрано, загружаем его на сервер
                             if (selectedImageBitmap != null) {
-                                uploadImageToFirebase(user.getUid(), new OnImageUploadCallback() {
-                                    @Override
-                                    public void onUploadSuccess(String imageUrl) {
-                                        // Вызываем метод регистрации пользователя с imageUrl
-                                        registerUser(user.getUid(), enteredLogin, phoneNumber, imageUrl);
-                                    }
-
-                                    @Override
-                                    public void onUploadFailure(String errorMessage) {
-                                        Toast.makeText(Registration.this, "Ошибка загрузки изображения: " + errorMessage, Toast.LENGTH_SHORT).show();
-                                    }
-                                });
+                                uploadImage(user.getUid(), selectedImageBitmap);
                             } else {
                                 // Если изображение не выбрано, отправляем null
                                 registerUser(user.getUid(), enteredLogin, phoneNumber, null);
@@ -318,6 +313,48 @@ public class Registration extends AppCompatActivity {
                         Toast.makeText(this, "Ошибка аутентификации с помощью SMS", Toast.LENGTH_SHORT).show();
                     }
                 });
+    }
+    //Метод передачи изображения на сервер
+    private void uploadImage(String userId, Bitmap selectedImageBitmap) {
+        if(userId != null && selectedImageBitmap != null) {
+            // Конвертируем изображение в байты
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            selectedImageBitmap.compress(Bitmap.CompressFormat.JPEG, 100, baos);
+            byte[] data = baos.toByteArray();
+            // Создаем RequestBody
+            RequestBody requestFile = RequestBody.create(MediaType.parse("image/jpeg"), data);
+            MultipartBody.Part body = MultipartBody.Part.createFormData("image", "image.jpg", requestFile);
+
+            try {
+                Api apiService = retrofitService.getRetrofit().create(Api.class);
+                Call<ResponseBody> call = apiService.uploadImage(userId, body);
+
+            call.enqueue(new Callback<ResponseBody>() {
+                @Override
+                public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
+                    if (response.isSuccessful()) {
+                        String imageUrl = String.valueOf(response.body());
+                        Log.d("Upload", "Image URL: " + imageUrl);
+
+                        // Регистрируем пользователя с полученным imageUrl
+                        registerUser(userId, enteredLogin, phoneNumber, imageUrl);
+                    } else {
+                        Log.e("Upload", "Upload failed: " + response.message());
+                    }
+                }
+
+                @Override
+                public void onFailure(Call<ResponseBody> call, Throwable t) {
+                    // Обработка ошибки
+                    Log.e("Upload", "Error uploading image: " + t.getMessage());
+                    deleteFirebaseUser(); // Удаляем пользователя из Firebase Autho
+                }
+            });
+            } catch (Exception e) {
+                Log.e("Upload", "Error creating API service: " + e.getMessage());
+            }
+        }
+
     }
 
     // Метод для регистрации пользователя
@@ -347,40 +384,26 @@ public class Registration extends AppCompatActivity {
             @Override
             public void onFailure(Call<Users> call, Throwable t) {
                 Toast.makeText(Registration.this, "Ошибка сети: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+                deleteFirebaseUser(); // Удаляем пользователя из Firebase Autho
             }
         });
     }
 
-    //Метод сохраняющий иизображение в Firebase Storage
-    private void uploadImageToFirebase(String userId, OnImageUploadCallback callback) {
-        // Ссылка на Firebase Storage
-        FirebaseStorage storage = FirebaseStorage.getInstance();
-        StorageReference storageRef = storage.getReference();
-
-        // Создаем ссылку для хранения изображения
-        StorageReference userImageRef = storageRef.child("profile_images/" + userId + ".jpg");
-
-        // Конвертируем изображение в байты
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        selectedImageBitmap.compress(Bitmap.CompressFormat.JPEG, 100, baos);
-        byte[] data = baos.toByteArray();
-
-        // Загружаем изображение в Firebase Storage
-        UploadTask uploadTask = userImageRef.putBytes(data);
-        uploadTask.addOnSuccessListener(taskSnapshot -> {
-            // Получаем ссылку на загруженное изображение
-            userImageRef.getDownloadUrl().addOnSuccessListener(uri -> {
-                String imageUrl = uri.toString();
-                callback.onUploadSuccess(imageUrl);  // Возвращаем URL
-            }).addOnFailureListener(e -> {
-                callback.onUploadFailure(e.getMessage());
+    //Метод для удаления пользователя из Firebase Autho в случае если его данные не были сохранены
+    private void deleteFirebaseUser() {
+        FirebaseUser currentUser = mAuth.getCurrentUser();
+        if (currentUser != null) {
+            currentUser.delete().addOnCompleteListener(task -> {
+                if (task.isSuccessful()) {
+                    Log.d("FirebaseAuth", "Пользователь удалён из Firebase Auth");
+                } else {
+                    Log.e("FirebaseAuth", "Не удалось удалить пользователя из Firebase Auth: " + task.getException());
+                }
             });
-        }).addOnFailureListener(e -> {
-            callback.onUploadFailure(e.getMessage());
-        });
+        }
     }
 
-    //Метод получения всех логинов существующих пользователей
+    // Метод получения всех логинов существующих пользователей
     private void fetchExistingUserLogins() {
         Api apiService = retrofitService.getRetrofit().create(Api.class);
 
@@ -391,17 +414,17 @@ public class Registration extends AppCompatActivity {
                 if (response.isSuccessful() && response.body() != null) {
                     // Если запрос успешен и тело ответа не пустое
                     allLogins = response.body();
-                    Toast.makeText(Registration.this, "Логины успешно получены: " + allLogins, Toast.LENGTH_SHORT).show();
+                    Log.d("FetchLogins", "Логины успешно получены: " + allLogins);
                 } else {
                     // Если ответ не успешен
                     String errorMessage = response.errorBody() != null ? response.errorBody().toString() : "Unknown Error";
-                    Toast.makeText(Registration.this, "Ошибка получения логинов: " + errorMessage, Toast.LENGTH_SHORT).show();
+                    Log.e("FetchLogins", "Ошибка получения логинов: " + errorMessage);
                 }
             }
 
             @Override
             public void onFailure(Call<List<String>> call, Throwable t) {
-                Toast.makeText(Registration.this, "Ошибка сети: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+                Log.e("FetchLogins", "Ошибка сети: " + t.getMessage());
             }
         });
     }
