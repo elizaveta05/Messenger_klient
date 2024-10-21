@@ -32,24 +32,32 @@ public class UserAdapter extends RecyclerView.Adapter<UserAdapter.UserViewHolder
         View itemView = LayoutInflater.from(context).inflate(R.layout.all_chats_adapter, parent, false);
         return new UserViewHolder(itemView);
     }
+
     public void setUserList(ArrayList<Users> user) {
         userList = user;
     }
+
     @Override
     public void onBindViewHolder(@NonNull UserViewHolder holder, int position) {
         Users user = userList.get(position);
 
         holder.tvName.setText(user.getLogin());
 
+        /*
         if (user.getPhotoUrl() != null) {
+
             Picasso.get()
-                    .load(user.getPhotoUrl())
+                    .load(user.getPhotoData())
                     .placeholder(R.drawable.icon_user)
                     .error(R.drawable.icon_user)
                     .into(holder.image_photo_user);
+
+
         } else {
             holder.image_photo_user.setImageResource(R.drawable.icon_user);
         }
+        
+         */
 
         holder.itemView.setOnClickListener(v -> {
             if (onUserClickListener != null) {
@@ -57,6 +65,7 @@ public class UserAdapter extends RecyclerView.Adapter<UserAdapter.UserViewHolder
             }
         });
     }
+
     @Override
     public int getItemCount() {
         return userList.size();

@@ -1,6 +1,5 @@
 package com.example.messenger.Model;
 
-import android.net.Uri;
 import android.os.Parcel;
 import android.os.Parcelable;
 
@@ -9,23 +8,24 @@ public class Users implements Parcelable {
     private String userId;
     private String login;
     private String phoneNumber;
-    private String photoUrl;
+    private byte[] photoData;
 
     public Users() {
     }
 
-    public Users(String userId, String login, String phoneNumber, String photoUrl) {
+    public Users(String userId, String login, String phoneNumber, byte[] photoData) {
         this.userId = userId;
         this.login = login;
         this.phoneNumber = phoneNumber;
-        this.photoUrl = photoUrl;
+        this.photoData = photoData;
     }
 
     protected Users(Parcel in) {
         userId = in.readString();
         login = in.readString();
         phoneNumber = in.readString();
-        photoUrl = in.readString();
+        // Чтение массива байтов
+        photoData = in.createByteArray();
     }
 
     public static final Creator<Users> CREATOR = new Creator<Users>() {
@@ -45,7 +45,8 @@ public class Users implements Parcelable {
         dest.writeString(userId);
         dest.writeString(login);
         dest.writeString(phoneNumber);
-        dest.writeString(photoUrl);
+        // Запись массива байтов
+        dest.writeByteArray(photoData);
     }
 
     @Override
@@ -77,15 +78,11 @@ public class Users implements Parcelable {
         this.phoneNumber = phoneNumber;
     }
 
-    public Uri getPhotoUrl() {
-        if (photoUrl != null && !photoUrl.isEmpty()) {
-            return Uri.parse(photoUrl);
-        } else {
-            return null;
-        }
+    public byte[] getPhotoData() {
+        return photoData;
     }
 
-    public void setPhotoUrl(String photoUrl) {
-        this.photoUrl = photoUrl;
+    public void setPhotoData(byte[] photoData) {
+        this.photoData = photoData;
     }
 }

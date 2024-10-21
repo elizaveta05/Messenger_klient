@@ -263,7 +263,7 @@ public class Profile extends AppCompatActivity {
                             // Извлекаем данные
                             loginBD = registeredUser.getLogin();
                             phoneNumber = registeredUser.getPhoneNumber();
-                            photoUrlBD = String.valueOf(registeredUser.getPhotoUrl());
+                            //photoUrlBD = String.valueOf(registeredUser.getPhotoUrl());
 
                             et_login.setText(loginBD);
                             et_phoneNumber.setText(phoneNumber);

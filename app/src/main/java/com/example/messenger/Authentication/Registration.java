@@ -24,6 +24,7 @@ import androidx.activity.result.ActivityResultCallback;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.messenger.CustomSpinnerAdapter;
@@ -73,10 +74,13 @@ public class Registration extends AppCompatActivity {
     private EditText number1, number2, number3, number4, number5, number6;
     private Button btn_registration;
     private ImageButton btn_back;
-    private  String phoneNumber;
+    private String phoneNumber;
     private FirebaseUser user;
     private List<String> allLogins;
     private RetrofitService retrofitService;
+    private StorageReference storageRef;
+    private String imagePath; // Переменная для хранения пути к изображению
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -92,12 +96,16 @@ public class Registration extends AppCompatActivity {
         new PhoneTextWatcher(et_phone);
         mAuth = FirebaseAuth.getInstance();
 
+        // Инициализация Firebase Storage
+        FirebaseStorage storage = FirebaseStorage.getInstance();
+        storageRef = storage.getReference();
+
         // Инициализируем RetrofitService
         retrofitService = new RetrofitService();
         fetchExistingUserLogins();
 
         btn_back = findViewById(R.id.btn_back);
-        btn_back.setOnClickListener(v->{
+        btn_back.setOnClickListener(v -> {
             Intent intent = new Intent(Registration.this, MainActivity.class);
             startActivity(intent);
             overridePendingTransition(0, 0); // Убрать анимацию перехода
@@ -111,10 +119,12 @@ public class Registration extends AppCompatActivity {
 
             et_login.addTextChangedListener(new TextWatcher() {
                 @Override
-                public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+                public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+                }
 
                 @Override
-                public void onTextChanged(CharSequence s, int start, int before, int count) {}
+                public void onTextChanged(CharSequence s, int start, int before, int count) {
+                }
 
                 @Override
                 public void afterTextChanged(Editable s) {
@@ -140,6 +150,7 @@ public class Registration extends AppCompatActivity {
                 public void onTick(long millisUntilFinished) {
                     toast.show();
                 }
+
                 public void onFinish() {
                     toast.cancel();
                 }
@@ -274,7 +285,8 @@ public class Registration extends AppCompatActivity {
     private void setEditTextAutoAdvance(final EditText currentEditText, final EditText nextEditText) {
         currentEditText.addTextChangedListener(new TextWatcher() {
             @Override
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+            }
 
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
@@ -284,7 +296,8 @@ public class Registration extends AppCompatActivity {
             }
 
             @Override
-            public void afterTextChanged(Editable s) {}
+            public void afterTextChanged(Editable s) {
+            }
         });
     }
 
@@ -297,12 +310,11 @@ public class Registration extends AppCompatActivity {
                         if (user != null) {
                             Toast.makeText(Registration.this, "Аутентификация успешна", Toast.LENGTH_SHORT).show();
                             dialog.dismiss();
-
-                            // Если изображение выбрано, загружаем его на сервер
-                            if (selectedImageBitmap != null) {
-                                uploadImage(user.getUid(), selectedImageBitmap);
-                            } else {
-                                // Если изображение не выбрано, отправляем null
+                            if(selectedImageBitmap!=null) {
+                                //Если изображения проифля выбрано, то сначала отсылаем его в хранилище
+                                uploadImageToFirebase(user.getUid(), enteredLogin, phoneNumber, selectedImageBitmap);
+                            }else if(selectedImageBitmap == null){
+                                //Если же изображение не было выбрано, то сразу регистрируем пользователя с передачей null в параметре изображения
                                 registerUser(user.getUid(), enteredLogin, phoneNumber, null);
                             }
 
@@ -314,78 +326,75 @@ public class Registration extends AppCompatActivity {
                     }
                 });
     }
-    //Метод передачи изображения на сервер
-    private void uploadImage(String userId, Bitmap selectedImageBitmap) {
-        if(userId != null && selectedImageBitmap != null) {
-            // Конвертируем изображение в байты
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            selectedImageBitmap.compress(Bitmap.CompressFormat.JPEG, 100, baos);
-            byte[] data = baos.toByteArray();
-            // Создаем RequestBody
-            RequestBody requestFile = RequestBody.create(MediaType.parse("image/jpeg"), data);
-            MultipartBody.Part body = MultipartBody.Part.createFormData("image", "image.jpg", requestFile);
 
-            try {
-                Api apiService = retrofitService.getRetrofit().create(Api.class);
-                Call<ResponseBody> call = apiService.uploadImage(userId, body);
+    //Метод загрузки изображений в Firebase Storage
+    private void uploadImageToFirebase(String userId, String login, String phoneNumber, Bitmap selectedImageBitmap) {
+        //Конвертируем изображение
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        selectedImageBitmap.compress(Bitmap.CompressFormat.JPEG, 100, baos);
+        byte[] data = baos.toByteArray();
 
-            call.enqueue(new Callback<ResponseBody>() {
-                @Override
-                public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
-                    if (response.isSuccessful()) {
-                        String imageUrl = String.valueOf(response.body());
-                        Log.d("Upload", "Image URL: " + imageUrl);
-
-                        // Регистрируем пользователя с полученным imageUrl
-                        registerUser(userId, enteredLogin, phoneNumber, imageUrl);
-                    } else {
-                        Log.e("Upload", "Upload failed: " + response.message());
-                    }
-                }
-
-                @Override
-                public void onFailure(Call<ResponseBody> call, Throwable t) {
-                    // Обработка ошибки
-                    Log.e("Upload", "Error uploading image: " + t.getMessage());
-                    deleteFirebaseUser(); // Удаляем пользователя из Firebase Autho
+        imagePath = "users_profile_image/" + userId + ".jpg"; // Сохраняем путь к изображению
+        StorageReference imageRef = storageRef.child(imagePath);
+        //Сохраняем изображение в хранилище
+        UploadTask uploadTask = imageRef.putBytes(data);
+        uploadTask.addOnSuccessListener(taskSnapshot -> {
+            imageRef.getDownloadUrl().addOnSuccessListener(uri -> { //При успешной загрузке изображения в хранилище, мы передаем url изображения на регистрацию
+                String imageUrl = uri.toString();
+                if (imageUrl != null){
+                    Log.d("FirebaseStorage", "Изображение успешно добавлено в Firebase Storage");
+                    registerUser(userId, login, phoneNumber, imageUrl);
                 }
             });
-            } catch (Exception e) {
-                Log.e("Upload", "Error creating API service: " + e.getMessage());
-            }
-        }
-
+        }).addOnFailureListener(e -> {
+            Toast.makeText(Registration.this, "Ошибка загрузки изображения", Toast.LENGTH_SHORT).show();
+        });
     }
-
-    // Метод для регистрации пользователя
+    //Метод, который отправляет запрос на регистрацию пользователей
     private void registerUser(String userId, String login, String phoneNumber, String imageUrl) {
-        // Создаем объект пользователя
-        Users newUser = new Users(userId, login, phoneNumber, imageUrl);
-
-        // Получаем Api сервис
         Api apiService = retrofitService.getRetrofit().create(Api.class);
+        RequestBody userIdBody = RequestBody.create(MediaType.parse("text/plain"), userId);
+        RequestBody loginBody = RequestBody.create(MediaType.parse("text/plain"), login);
+        RequestBody phoneNumberBody = RequestBody.create(MediaType.parse("text/plain"), phoneNumber);
 
-        // Вызываем метод для регистрации пользователя на сервере
-        Call<Users> call = apiService.registerUser(newUser);
+        Call<Users> call = apiService.registerUser(userIdBody, loginBody, phoneNumberBody, imageUrl != null ?
+                RequestBody.create(MediaType.parse("text/plain"), imageUrl) : null);
 
         call.enqueue(new Callback<Users>() {
             @Override
             public void onResponse(Call<Users> call, Response<Users> response) {
                 if (response.isSuccessful()) {
+                    Log.d("Ответ сервера", "Пользователь зарегистрирован");
                     Toast.makeText(Registration.this, "Пользователь успешно зарегистрирован", Toast.LENGTH_SHORT).show();
                     Intent intent = new Intent(Registration.this, Profile.class);
                     startActivity(intent);
-                    overridePendingTransition(0, 0); // Убрать анимацию перехода
                 } else {
+                    Log.d("Ответ сервера", "Пользователь не зарегистрирован! Произошла ошибка!");
                     Toast.makeText(Registration.this, "Ошибка регистрации", Toast.LENGTH_SHORT).show();
+                    if (imagePath != null) {
+                        deleteImageFromFirebase(imagePath); // Удаляем изображение по пути
+                    }
                 }
             }
 
             @Override
             public void onFailure(Call<Users> call, Throwable t) {
+                Log.d("Ответ сервера", "Пользователь не зарегистрирован! Произошла ошибка!");
                 Toast.makeText(Registration.this, "Ошибка сети: " + t.getMessage(), Toast.LENGTH_SHORT).show();
-                deleteFirebaseUser(); // Удаляем пользователя из Firebase Autho
+                if (imagePath != null) {
+                    deleteImageFromFirebase(imagePath); // Удаляем изображение по пути
+                }
+                deleteFirebaseUser(); // Удаляем пользователя из Firebase Auth
             }
+        });
+    }
+    //Метод, который удаляет изображение из хранилища, в случае если на сервере не происходит регистрация
+    private void deleteImageFromFirebase(String imagePath) {
+        StorageReference imageRef = storageRef.child(imagePath);
+        imageRef.delete().addOnSuccessListener(aVoid -> {
+            Log.d("FirebaseStorage", "Изображение успешно удалено из Firebase Storage");
+        }).addOnFailureListener(e -> {
+            Log.e("FirebaseStorage", "Ошибка при удалении изображения из Firebase Storage: " + e.getMessage());
         });
     }
 
@@ -475,4 +484,5 @@ public class Registration extends AppCompatActivity {
                 return "";
         }
     }
+
 }

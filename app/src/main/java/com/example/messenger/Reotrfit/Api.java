@@ -21,9 +21,15 @@ import retrofit2.http.Path;
 
 public interface Api {
 
-    // Метод создания профиля пользователя
+    // Метод создания профиля пользователя с изображением
+    @Multipart
     @POST("/users/createUser")
-    Call<Users> registerUser(@Body Users newUser);
+    Call<Users> registerUser(
+            @Part("userId") RequestBody userId,
+            @Part("login") RequestBody login,
+            @Part("phoneNumber") RequestBody phoneNumber,
+            @Part("image_url") RequestBody image_url
+    );
 
     // Метод получения всех логинов пользователей
     @GET("/users/getUsersLogin")
@@ -36,12 +42,6 @@ public interface Api {
     // Метод удаления профиля пользователя
     @DELETE("/users/deleteProfileUser/{userId}")
     Call<String> deleteProfileUser(@Path("userId") String userId);
-
-    //Метод передачи изображения на сервер
-    @Multipart
-    @POST("/firebase/uploadImage")
-    Call<ResponseBody> uploadImage(@Part("userId") String userId, @Part MultipartBody.Part image);
-
 
     @GET("/app/getAllChatsForUser/{senderId}")
     Call<List<Chat>> getAllChatsForUser(@Path("senderId") String senderId);
