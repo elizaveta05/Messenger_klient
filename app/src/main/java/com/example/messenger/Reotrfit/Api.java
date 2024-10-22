@@ -39,6 +39,10 @@ public interface Api {
     @GET("/users/getProfileUser/{userId}")
     Call<Users> getProfileUser(@Path("userId") String userId);
 
+    //Метод проверки на нахождения телефона в бд
+    @GET("/users/getPhoneNumber/{phoneNumber}")
+    Call<Boolean> getPhoneNumber(@Path("phoneNumber") String phoneNumber);
+
     // Метод удаления профиля пользователя
     @DELETE("/users/deleteProfileUser/{userId}")
     Call<String> deleteProfileUser(@Path("userId") String userId);

@@ -1,5 +1,6 @@
 package com.example.messenger.Authentication;
 
+import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.Intent;
 import android.graphics.Bitmap;
@@ -41,6 +42,7 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.auth.PhoneAuthCredential;
+import com.google.firebase.auth.PhoneAuthOptions;
 import com.google.firebase.auth.PhoneAuthProvider;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
@@ -129,7 +131,7 @@ public class Registration extends AppCompatActivity {
                 @Override
                 public void afterTextChanged(Editable s) {
                     enteredLogin = s.toString();
-
+                    //В зависимости от результата прохождения логином валидации устанавливается цвет рамки
                     boolean isValid = isValidLogin(enteredLogin);
 
                     if (isValid) {
@@ -187,30 +189,14 @@ public class Registration extends AppCompatActivity {
             }
         });
 
+        // Нажатие на кнопку регистрации
         btn_autho.setOnClickListener(v -> {
             phoneNumber = "+" + (et_number.getText().toString() + et_phone.getText().toString().trim()).replaceAll("[^0-9]", "");
             if (spinner.getSelectedItemPosition() == 0) {
                 Toast.makeText(Registration.this, "Выберите страну", Toast.LENGTH_SHORT).show();
             } else if (phoneNumber != null && phoneNumber.length() == 12 && isValidLogin(enteredLogin)) {
-                //Если телефон имеет верный формат, то открываем диалоговое окно для введение кода
-                dialog = new Dialog(this);
-                dialog.setContentView(R.layout.activity_code);
-
-                number1 = dialog.findViewById(R.id.number1);
-                number2 = dialog.findViewById(R.id.number2);
-                number3 = dialog.findViewById(R.id.number3);
-                number4 = dialog.findViewById(R.id.number4);
-                number5 = dialog.findViewById(R.id.number5);
-                number6 = dialog.findViewById(R.id.number6);
-                btn_registration = dialog.findViewById(R.id.btn_registration);
-
-                PhoneAuthProvider.getInstance().verifyPhoneNumber(
-                        phoneNumber,
-                        60L,
-                        TimeUnit.SECONDS,
-                        this,
-                        mCallbacks
-                );
+                // Запускаем асинхронную проверку номера телефона
+                checkPhoneNumber(phoneNumber);
             } else {
                 Toast.makeText(Registration.this, "Ошибка! Проверьте введенные данные", Toast.LENGTH_SHORT).show();
             }
@@ -265,6 +251,74 @@ public class Registration extends AppCompatActivity {
         };
     }
 
+    //Метод проверки номера телефона на наличие в бд
+    private void checkPhoneNumber(String phoneNumber) {
+        Api apiService = retrofitService.getRetrofit().create(Api.class);
+        Call<Boolean> call = apiService.getPhoneNumber(phoneNumber);
+        call.enqueue(new Callback<Boolean>() {
+            @Override
+            public void onResponse(Call<Boolean> call, Response<Boolean> response) {
+                if (response.isSuccessful()) {
+                    boolean exists = response.body(); // true или false
+                    if (exists) {
+                        // Номер телефона уже существует
+                        new AlertDialog.Builder(Registration.this)
+                                .setTitle("Профиль уже существует")
+                                .setMessage("Профиль с этим номером уже существует. Вы можете перейти на страницу авторизации или изменить номер.")
+                                .setPositiveButton("Перейти на авторизацию", (dialog, which) -> {
+                                    Intent intent = new Intent(Registration.this, Authorization.class);
+                                    startActivity(intent);
+                                    overridePendingTransition(0, 0);
+                                })
+                                .setNegativeButton("Изменить номер", (dialog, which) -> {
+                                    dialog.dismiss(); // Закрываем диалог
+                                    et_phone.requestFocus(); // Устанавливаем фокус на EditText для ввода номера
+                                })
+                                .show();
+                    } else {
+                        // Если номер телефона не существует, открываем диалоговое окно для ввода кода
+                        showCodeInputDialog();
+                    }
+                } else {
+                    Toast.makeText(Registration.this, "Ошибка при проверке номера телефона", Toast.LENGTH_SHORT).show();
+                }
+            }
+
+            @Override
+            public void onFailure(Call<Boolean> call, Throwable t) {
+                Log.e("Ответ от сервера", "Произошла ошибка при проверке номера телефона " + t.getMessage());
+                Toast.makeText(Registration.this, "Ошибка связи. Попробуйте еще раз.", Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    //Открытие диалогового окна для ввода кода
+    private void showCodeInputDialog() {
+        // Если телефон имеет верный формат, то открываем диалоговое окно для ввода кода
+        dialog = new Dialog(this);
+        dialog.setContentView(R.layout.activity_code);
+
+        number1 = dialog.findViewById(R.id.number1);
+        number2 = dialog.findViewById(R.id.number2);
+        number3 = dialog.findViewById(R.id.number3);
+        number4 = dialog.findViewById(R.id.number4);
+        number5 = dialog.findViewById(R.id.number5);
+        number6 = dialog.findViewById(R.id.number6);
+        btn_registration = dialog.findViewById(R.id.btn_registration);
+
+        PhoneAuthProvider.getInstance().verifyPhoneNumber(
+                new PhoneAuthOptions.Builder(FirebaseAuth.getInstance())
+                        .setPhoneNumber(phoneNumber)       // Укажите номер телефона
+                        .setTimeout(60L, TimeUnit.SECONDS) // Укажите таймаут
+                        .setActivity(this)                 // Укажите контекст
+                        .setCallbacks(mCallbacks)          // Укажите коллбэки
+                        .build()
+        );
+
+        // Показываем диалог
+        dialog.show();
+    }
+
     //Метод для выбора изображения пользователем
     ActivityResultLauncher<String> requestPermissionLauncher = registerForActivityResult(new ActivityResultContracts.GetContent(),
             new ActivityResultCallback<Uri>() {
@@ -280,7 +334,6 @@ public class Registration extends AppCompatActivity {
                     }
                 }
             });
-
 
     private void setEditTextAutoAdvance(final EditText currentEditText, final EditText nextEditText) {
         currentEditText.addTextChangedListener(new TextWatcher() {
@@ -368,6 +421,8 @@ public class Registration extends AppCompatActivity {
                     Toast.makeText(Registration.this, "Пользователь успешно зарегистрирован", Toast.LENGTH_SHORT).show();
                     Intent intent = new Intent(Registration.this, Profile.class);
                     startActivity(intent);
+                    overridePendingTransition(0, 0); // Убрать анимацию перехода
+
                 } else {
                     Log.d("Ответ сервера", "Пользователь не зарегистрирован! Произошла ошибка!");
                     Toast.makeText(Registration.this, "Ошибка регистрации", Toast.LENGTH_SHORT).show();

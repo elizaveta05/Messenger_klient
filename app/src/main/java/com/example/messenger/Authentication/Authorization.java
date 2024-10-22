@@ -1,5 +1,6 @@
 package com.example.messenger.Authentication;
 
+import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.Context;
 import android.content.Intent;
@@ -7,6 +8,7 @@ import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextUtils;
 import android.text.TextWatcher;
+import android.util.Log;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.AdapterView;
@@ -24,20 +26,28 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
 import com.example.messenger.CustomSpinnerAdapter;
+import com.example.messenger.Model.Users;
 import com.example.messenger.PhoneTextWatcher;
 import com.example.messenger.Profile;
 import com.example.messenger.R;
+import com.example.messenger.Reotrfit.Api;
+import com.example.messenger.Reotrfit.RetrofitService;
 import com.google.firebase.FirebaseException;
 import com.google.firebase.FirebaseTooManyRequestsException;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.auth.PhoneAuthCredential;
+import com.google.firebase.auth.PhoneAuthOptions;
 import com.google.firebase.auth.PhoneAuthProvider;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 public class Authorization extends AppCompatActivity {
 
@@ -51,6 +61,7 @@ public class Authorization extends AppCompatActivity {
     private ImageButton btn_back;
 
     private FirebaseUser user;
+    private RetrofitService retrofitService;
 
     private  String phoneNumber;
 
@@ -70,6 +81,8 @@ public class Authorization extends AppCompatActivity {
         et_phone = findViewById(R.id.et_phone);
         new PhoneTextWatcher(et_phone);
         mAuth = FirebaseAuth.getInstance();
+        // Инициализация RetrofitService
+        retrofitService = new RetrofitService();
         btn_back = findViewById(R.id.btn_back);
         btn_back.setOnClickListener(v->{
             Intent intent = new Intent(Authorization.this, MainActivity.class);
@@ -107,47 +120,17 @@ public class Authorization extends AppCompatActivity {
 
         Button btn_autho = findViewById(R.id.btn_autho);
         btn_autho.setOnClickListener(v -> {
-            if (spinner.getSelectedItemPosition() != 0) {
-                if (et_number != null && et_phone != null) {
-                    String selectedCountry = spinner.getSelectedItem().toString();
-                    String countryCode = getCountryCode(selectedCountry);
-
-                    String phone = et_phone.getText().toString().replaceAll("[^\\d]", ""); // Оставляем только цифры
-                    if (!TextUtils.isEmpty(phone) && phone.length() == 10) {
-                        phoneNumber = "+" + countryCode + phone;
-                        dialog = new Dialog(this);
-                        dialog.setContentView(R.layout.activity_code);
-
-                        number1 = dialog.findViewById(R.id.number1);
-                        number2 = dialog.findViewById(R.id.number2);
-                        number3 = dialog.findViewById(R.id.number3);
-                        number4 = dialog.findViewById(R.id.number4);
-                        number5 = dialog.findViewById(R.id.number5);
-                        number6 = dialog.findViewById(R.id.number6);
-                        btn_registration = dialog.findViewById(R.id.btn_registration);
-
-                        // Скрытие клавиатуры
-                        InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
-                        imm.hideSoftInputFromWindow(v.getWindowToken(), 0);
-
-                        PhoneAuthProvider.getInstance().verifyPhoneNumber(
-                                phoneNumber,
-                                60L,
-                                TimeUnit.SECONDS,
-                                this,
-                                mCallbacks
-                        );
-
-                    } else {
-                        Toast.makeText(getApplicationContext(), "Номер телефона должен содержать 10 цифр", Toast.LENGTH_SHORT).show();
-                    }
-                } else {
-                    Toast.makeText(getApplicationContext(), "Заполните поле номера телефона", Toast.LENGTH_SHORT).show();
-                }
+            phoneNumber = "+" + (et_number.getText().toString() + et_phone.getText().toString().trim()).replaceAll("[^0-9]", "");
+            if (spinner.getSelectedItemPosition() == 0) {
+                Toast.makeText(Authorization.this, "Выберите страну", Toast.LENGTH_SHORT).show();
+            } else if (phoneNumber != null && phoneNumber.length() == 12) {
+                // Запускаем асинхронную проверку номера телефона
+                checkPhoneNumber(phoneNumber);
             } else {
-                Toast.makeText(getApplicationContext(), "Выберите страну", Toast.LENGTH_SHORT).show();
+                Toast.makeText(Authorization.this, "Ошибка! Проверьте введенные данные", Toast.LENGTH_SHORT).show();
             }
         });
+
         mCallbacks = new PhoneAuthProvider.OnVerificationStateChangedCallbacks() {
             @Override
             public void onVerificationCompleted(@NonNull PhoneAuthCredential phoneAuthCredential) {
@@ -200,6 +183,73 @@ public class Authorization extends AppCompatActivity {
             }
         };
     }
+    //Метод проверки номера телефона на наличие в бд
+    private void checkPhoneNumber(String phoneNumber) {
+        Api apiService = retrofitService.getRetrofit().create(Api.class);
+        Call<Boolean> call = apiService.getPhoneNumber(phoneNumber);
+        call.enqueue(new Callback<Boolean>() {
+            @Override
+            public void onResponse(Call<Boolean> call, Response<Boolean> response) {
+                if (response.isSuccessful()) {
+                    boolean exists = response.body(); // true или false
+                    if (exists) {
+                        // Номер телефона уже существует
+                        showCodeInputDialog();
+                    } else {
+                        // Если номер телефона не существует, открываем диалоговое окно для ввода кода
+                        new AlertDialog.Builder(Authorization.this)
+                                .setTitle("Профиль не существует")
+                                .setMessage("Профиль с этим номером не найден. Вы можете перейти на страницу регистрации или изменить номер.")
+                                .setPositiveButton("Перейти на регистрацию", (dialog, which) -> {
+                                    Intent intent = new Intent(Authorization.this, Registration.class);
+                                    startActivity(intent);
+                                    overridePendingTransition(0, 0);
+                                })
+                                .setNegativeButton("Изменить номер", (dialog, which) -> {
+                                    dialog.dismiss(); // Закрываем диалог
+                                    et_phone.requestFocus(); // Устанавливаем фокус на EditText для ввода номера
+                                })
+                                .show();
+                    }
+                } else {
+                    Toast.makeText(Authorization.this, "Ошибка при проверке номера телефона", Toast.LENGTH_SHORT).show();
+                }
+            }
+
+            @Override
+            public void onFailure(Call<Boolean> call, Throwable t) {
+                Log.e("Ответ от сервера", "Произошла ошибка при проверке номера телефона " + t.getMessage());
+                Toast.makeText(Authorization.this, "Ошибка связи. Попробуйте еще раз.", Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    //Открытие диалогового окна для ввода кода
+    private void showCodeInputDialog() {
+        // Если телефон имеет верный формат, то открываем диалоговое окно для ввода кода
+        dialog = new Dialog(this);
+        dialog.setContentView(R.layout.activity_code);
+
+        number1 = dialog.findViewById(R.id.number1);
+        number2 = dialog.findViewById(R.id.number2);
+        number3 = dialog.findViewById(R.id.number3);
+        number4 = dialog.findViewById(R.id.number4);
+        number5 = dialog.findViewById(R.id.number5);
+        number6 = dialog.findViewById(R.id.number6);
+        btn_registration = dialog.findViewById(R.id.btn_registration);
+
+        PhoneAuthProvider.getInstance().verifyPhoneNumber(
+                new PhoneAuthOptions.Builder(FirebaseAuth.getInstance())
+                        .setPhoneNumber(phoneNumber)       // Укажите номер телефона
+                        .setTimeout(60L, TimeUnit.SECONDS) // Укажите таймаут
+                        .setActivity(this)                 // Укажите контекст
+                        .setCallbacks(mCallbacks)          // Укажите коллбэки
+                        .build()
+        );
+
+        // Показываем диалог
+        dialog.show();
+    }
     private void setEditTextAutoAdvance(final EditText currentEditText, final EditText nextEditText) {
         currentEditText.addTextChangedListener(new TextWatcher() {
             @Override
@@ -216,6 +266,7 @@ public class Authorization extends AppCompatActivity {
             public void afterTextChanged(Editable s) {}
         });
     }
+    //Метод проверки аутентификации
     private void signInWithPhoneAuthCredential(PhoneAuthCredential credential) {
         mAuth.signInWithCredential(credential)
                 .addOnCompleteListener(this, task -> {
@@ -224,11 +275,14 @@ public class Authorization extends AppCompatActivity {
                         if (user != null) {
                             Toast.makeText(Authorization.this, "Аутентификация успешна", Toast.LENGTH_SHORT).show();
                             dialog.dismiss();
-                            Intent intent = new Intent(Authorization.this, Profile.class);
-                            startActivity(intent);
-                            overridePendingTransition(0, 0); // Убрать анимацию перехода
+                            if(user.getUid() != null){
+                                getProfileUser(user.getUid());
+                            }
                         } else {
                             Toast.makeText(this, "Не удалось получить информацию о текущем пользователе", Toast.LENGTH_SHORT).show();
+                            Intent intent = new Intent(Authorization.this, Registration.class);
+                            startActivity(intent);
+                            overridePendingTransition(0, 0); // Убрать анимацию перехода
                         }
                     } else {
                         Toast.makeText(this, "Ошибка аутентификации с помощью SMS", Toast.LENGTH_SHORT).show();
@@ -236,6 +290,33 @@ public class Authorization extends AppCompatActivity {
                 });
     }
 
+    //Метод, который проверяет данные пользователя в БД
+    private void getProfileUser(String userId){
+        Api apiService = retrofitService.getRetrofit().create(Api.class);
+        // Выполняем асинхронный запрос
+        Call<Users> call = apiService.getProfileUser(userId);
+
+        call.enqueue(new Callback<Users>() {
+            @Override
+            public void onResponse(Call<Users> call, Response<Users> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    Intent intent = new Intent(Authorization.this, Profile.class);
+                    startActivity(intent);
+                    overridePendingTransition(0, 0); // Убрать анимацию перехода
+                } else {
+                    // Обработка случая, когда пользователь не найден
+                    Log.e("API", "Пользователь не найден или ошибка в ответе: " + response.code());
+                }
+            }
+
+            @Override
+            public void onFailure(Call<Users> call, Throwable t) {
+                // Обработка ошибки, например, ошибка сети
+                Log.e("API", "Ошибка при получении данных профиля: " + t.getMessage());
+            }
+        });
+
+    }
     private String getCountryCode(String country) {
         switch (country) {
             case "Россия":
