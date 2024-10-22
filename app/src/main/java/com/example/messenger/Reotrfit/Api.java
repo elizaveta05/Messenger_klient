@@ -15,6 +15,7 @@ import retrofit2.http.DELETE;
 import retrofit2.http.GET;
 import retrofit2.http.Multipart;
 import retrofit2.http.POST;
+import retrofit2.http.PUT;
 import retrofit2.http.Part;
 import retrofit2.http.Path;
 
@@ -46,6 +47,11 @@ public interface Api {
     // Метод удаления профиля пользователя
     @DELETE("/users/deleteProfileUser/{userId}")
     Call<String> deleteProfileUser(@Path("userId") String userId);
+
+    //Метод изменения данных профиля конкретного пользователя
+    @PUT("/users/updateUserProfile/{userId}")
+    Call<Users> updateUserProfile(@Path("userId") String userId, @Body Users user);
+
 
     @GET("/app/getAllChatsForUser/{senderId}")
     Call<List<Chat>> getAllChatsForUser(@Path("senderId") String senderId);

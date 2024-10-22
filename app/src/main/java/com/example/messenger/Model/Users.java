@@ -8,24 +8,23 @@ public class Users implements Parcelable {
     private String userId;
     private String login;
     private String phoneNumber;
-    private byte[] photoData;
+    private String image_url;
 
     public Users() {
     }
 
-    public Users(String userId, String login, String phoneNumber, byte[] photoData) {
+    public Users(String userId, String login, String phoneNumber, String image_url) {
         this.userId = userId;
         this.login = login;
         this.phoneNumber = phoneNumber;
-        this.photoData = photoData;
+        this.image_url = image_url;
     }
 
     protected Users(Parcel in) {
         userId = in.readString();
         login = in.readString();
         phoneNumber = in.readString();
-        // Чтение массива байтов
-        photoData = in.createByteArray();
+
     }
 
     public static final Creator<Users> CREATOR = new Creator<Users>() {
@@ -45,8 +44,7 @@ public class Users implements Parcelable {
         dest.writeString(userId);
         dest.writeString(login);
         dest.writeString(phoneNumber);
-        // Запись массива байтов
-        dest.writeByteArray(photoData);
+        dest.writeString(image_url);
     }
 
     @Override
@@ -78,11 +76,11 @@ public class Users implements Parcelable {
         this.phoneNumber = phoneNumber;
     }
 
-    public byte[] getPhotoData() {
-        return photoData;
+    public String getImage_url() {
+        return image_url;
     }
 
-    public void setPhotoData(byte[] photoData) {
-        this.photoData = photoData;
+    public void setImage_url(String image_url) {
+        this.image_url = image_url;
     }
 }

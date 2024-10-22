@@ -250,6 +250,8 @@ public class Authorization extends AppCompatActivity {
         // Показываем диалог
         dialog.show();
     }
+
+    //Метод для переключения фокуса при вводе кода
     private void setEditTextAutoAdvance(final EditText currentEditText, final EditText nextEditText) {
         currentEditText.addTextChangedListener(new TextWatcher() {
             @Override
