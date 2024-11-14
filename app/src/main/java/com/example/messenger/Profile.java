@@ -538,41 +538,34 @@ public class Profile extends AppCompatActivity {
     }
     // Метод для завершения аутентификации
     private void signInWithPhoneAuthCredential(PhoneAuthCredential credential, String newPhoneNumber, FirebaseUser currentUser, String login, String photoUrl) {
-        mAuth.signInWithCredential(credential)
-                .addOnCompleteListener(this, task -> {
-                    if (task.isSuccessful()) {
-                        // Успешная аутентификация, обновляем номер в Firebase Auth
-                        if (currentUser != null) {
-                            currentUser.updatePhoneNumber(credential)
-                                    .addOnCompleteListener(updateTask -> {
-                                        if (updateTask.isSuccessful()) {
-                                            // Обновляем профиль с новым номером телефона
-                                            updateUserProfile(currentUser.getUid(), login, photoUrl, newPhoneNumber);
-                                            Toast.makeText(this, "Номер телефона обновлен успешно", Toast.LENGTH_SHORT).show();
-                                        } else {
-                                            // Обработка возможных исключений
-                                            Exception exception = updateTask.getException();
-                                            if (exception instanceof FirebaseAuthUserCollisionException) {
-                                                Toast.makeText(this, "Этот номер уже привязан к другому аккаунту", Toast.LENGTH_SHORT).show();
-                                            } else if (exception instanceof FirebaseAuthInvalidUserException) {
-                                                Toast.makeText(this, "Ваш аккаунт был удалён или отключён", Toast.LENGTH_SHORT).show();
-                                            } else if (exception instanceof FirebaseAuthRecentLoginRequiredException) {
-                                                // Требуется повторная аутентификация
-                                                reauthenticateUser(currentUser, credential);
-                                            } else {
-                                                Toast.makeText(this, "Ошибка при обновлении номера в Firebase", Toast.LENGTH_SHORT).show();
-                                            }
-                                        }
-                                    });
+        if (currentUser != null) {
+            currentUser.updatePhoneNumber(credential)
+                    .addOnCompleteListener(updateTask -> {
+                        if (updateTask.isSuccessful()) {
+                            // Обновляем профиль с новым номером телефона
+                            updateUserProfile(currentUser.getUid(), login, photoUrl, newPhoneNumber);
+                            Toast.makeText(this, "Номер телефона обновлен успешно", Toast.LENGTH_SHORT).show();
                         } else {
-                            Toast.makeText(this, "Пользователь не найден", Toast.LENGTH_SHORT).show();
+                            // Обработка возможных исключений
+                            Exception exception = updateTask.getException();
+                            if (exception instanceof FirebaseAuthUserCollisionException) {
+                                Toast.makeText(this, "Этот номер уже привязан к другому аккаунту", Toast.LENGTH_SHORT).show();
+                            } else if (exception instanceof FirebaseAuthInvalidUserException) {
+                                Toast.makeText(this, "Ваш аккаунт был удалён или отключён", Toast.LENGTH_SHORT).show();
+                            } else if (exception instanceof FirebaseAuthRecentLoginRequiredException) {
+                                // Требуется повторная аутентификация
+                                reauthenticateUser(currentUser, credential);
+                            } else {
+                                Toast.makeText(this, "Ошибка при обновлении номера в Firebase", Toast.LENGTH_SHORT).show();
+                            }
                         }
-                    } else {
-                        Toast.makeText(this, "Ошибка аутентификации с помощью SMS", Toast.LENGTH_SHORT).show();
-                    }
-                });
+                    });
+        } else {
+            Toast.makeText(this, "Пользователь не найден", Toast.LENGTH_SHORT).show();
+        }
         dialog.dismiss();
     }
+
 
     // Метод для повторной аутентификации пользователя
     private void reauthenticateUser(FirebaseUser currentUser, PhoneAuthCredential credential) {
