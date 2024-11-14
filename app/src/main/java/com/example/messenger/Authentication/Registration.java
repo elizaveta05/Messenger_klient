@@ -20,7 +20,8 @@ import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.Spinner;
 import android.widget.Toast;
-
+import com.example.messenger.Authentication.Class.CountryCodeHelper;
+import com.example.messenger.Authentication.Class.CountryList;
 import androidx.activity.result.ActivityResultCallback;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
@@ -28,6 +29,9 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.example.messenger.Authentication.Class.CountryList;
+import com.example.messenger.Authentication.Class.GetUsersLogin;
+import com.example.messenger.Authentication.Class.ImageUploader;
 import com.example.messenger.CustomSpinnerAdapter;
 import com.example.messenger.PhoneTextWatcher;
 import com.example.messenger.Profile;
@@ -161,15 +165,7 @@ public class Registration extends AppCompatActivity {
         addPhotoButton.setOnClickListener(v -> {
             requestPermissionLauncher.launch("image/*");
         });
-        List<String> countries = new ArrayList<>();
-        countries.add("Выберите страну");
-        countries.add("Россия");
-        countries.add("США");
-        countries.add("Китай");
-        countries.add("Бразилия");
-        countries.add("Германия");
-        countries.add("Индия");
-        countries.add("Австралия");
+        List<String> countries = CountryList.getCountries();
 
         //Метод установки кода телефона в зависимости от выбора страны
         CustomSpinnerAdapter adapter = new CustomSpinnerAdapter(this, android.R.layout.simple_spinner_item, countries);
@@ -180,7 +176,7 @@ public class Registration extends AppCompatActivity {
             @Override
             public void onItemSelected(AdapterView<?> parentView, View selectedItemView, int position, long id) {
                 String selectedCountry = countries.get(position);
-                String countryCode = getCountryCode(selectedCountry);
+                String countryCode = CountryCodeHelper.getCountryCode(selectedCountry);
                 et_number.setText("+" + countryCode);
             }
 
@@ -363,8 +359,19 @@ public class Registration extends AppCompatActivity {
                             Toast.makeText(Registration.this, "Аутентификация успешна", Toast.LENGTH_SHORT).show();
                             dialog.dismiss();
                             if(selectedImageBitmap!=null) {
-                                //Если изображения проифля выбрано, то сначала отсылаем его в хранилище
-                                uploadImageToFirebase(user.getUid(), enteredLogin, phoneNumber, selectedImageBitmap);
+                                //Если изображения профиля выбрано, то сначала отсылаем его в хранилище
+                                ImageUploader imageUploader = new ImageUploader();
+                                imageUploader.uploadImage(user, selectedImageBitmap, new ImageUploader.ImageUploadCallback() {
+                                    @Override
+                                    public void onSuccess(String imageUrl) {
+                                        registerUser(user.getUid(), enteredLogin, phoneNumber, imageUrl);
+                                    }
+
+                                    @Override
+                                    public void onError(String error) {
+                                        Toast.makeText(Registration.this, "Ошибка загрузки изображения: " + error, Toast.LENGTH_SHORT).show();
+                                    }
+                                });
                             }else if(selectedImageBitmap == null){
                                 //Если же изображение не было выбрано, то сразу регистрируем пользователя с передачей null в параметре изображения
                                 registerUser(user.getUid(), enteredLogin, phoneNumber, null);
@@ -377,30 +384,6 @@ public class Registration extends AppCompatActivity {
                         Toast.makeText(this, "Ошибка аутентификации с помощью SMS", Toast.LENGTH_SHORT).show();
                     }
                 });
-    }
-
-    //Метод загрузки изображений в Firebase Storage
-    private void uploadImageToFirebase(String userId, String login, String phoneNumber, Bitmap selectedImageBitmap) {
-        //Конвертируем изображение
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        selectedImageBitmap.compress(Bitmap.CompressFormat.JPEG, 100, baos);
-        byte[] data = baos.toByteArray();
-
-        imagePath = "users_profile_image/" + userId + ".jpg"; // Сохраняем путь к изображению
-        StorageReference imageRef = storageRef.child(imagePath);
-        //Сохраняем изображение в хранилище
-        UploadTask uploadTask = imageRef.putBytes(data);
-        uploadTask.addOnSuccessListener(taskSnapshot -> {
-            imageRef.getDownloadUrl().addOnSuccessListener(uri -> { //При успешной загрузке изображения в хранилище, мы передаем url изображения на регистрацию
-                String imageUrl = uri.toString();
-                if (imageUrl != null){
-                    Log.d("FirebaseStorage", "Изображение успешно добавлено в Firebase Storage");
-                    registerUser(userId, login, phoneNumber, imageUrl);
-                }
-            });
-        }).addOnFailureListener(e -> {
-            Toast.makeText(Registration.this, "Ошибка загрузки изображения", Toast.LENGTH_SHORT).show();
-        });
     }
     //Метод, который отправляет запрос на регистрацию пользователей
     private void registerUser(String userId, String login, String phoneNumber, String imageUrl) {
@@ -468,26 +451,17 @@ public class Registration extends AppCompatActivity {
 
     // Метод получения всех логинов существующих пользователей
     private void fetchExistingUserLogins() {
-        Api apiService = retrofitService.getRetrofit().create(Api.class);
-
-        Call<List<String>> call = apiService.getUsersLogin();
-        call.enqueue(new Callback<List<String>>() {
+        GetUsersLogin getUsersLogin = new GetUsersLogin(); // Создать экземпляр класса
+        getUsersLogin.getUsersLogin(new GetUsersLogin.UsersLoginCallback() { // Изменено на getUsersLogin
             @Override
-            public void onResponse(Call<List<String>> call, Response<List<String>> response) {
-                if (response.isSuccessful() && response.body() != null) {
-                    // Если запрос успешен и тело ответа не пустое
-                    allLogins = response.body();
-                    Log.d("FetchLogins", "Логины успешно получены: " + allLogins);
-                } else {
-                    // Если ответ не успешен
-                    String errorMessage = response.errorBody() != null ? response.errorBody().toString() : "Unknown Error";
-                    Log.e("FetchLogins", "Ошибка получения логинов: " + errorMessage);
-                }
+            public void onSuccess(List<String> logins) {
+                allLogins = logins; // Полученные логины сохраняем в поля класса
+                Log.d("FetchLogins", "Логины успешно получены: " + allLogins);
             }
 
             @Override
-            public void onFailure(Call<List<String>> call, Throwable t) {
-                Log.e("FetchLogins", "Ошибка сети: " + t.getMessage());
+            public void onError(String errorMessage) {
+                Log.e("FetchLogins", "Ошибка получения логинов: " + errorMessage);
             }
         });
     }
@@ -517,26 +491,5 @@ public class Registration extends AppCompatActivity {
         return true;
     }
 
-    //Метод получения кода страны для номер телефона
-    private String getCountryCode(String country) {
-        switch (country) {
-            case "Россия":
-                return "7";
-            case "США":
-                return "1";
-            case "Китай":
-                return "86";
-            case "Бразилия":
-                return "55";
-            case "Германия":
-                return "49";
-            case "Индия":
-                return "91";
-            case "Австралия":
-                return "61";
-            default:
-                return "";
-        }
-    }
 
 }

@@ -39,6 +39,8 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
 import com.example.messenger.Authentication.Authorization;
+import com.example.messenger.Authentication.Class.GetUsersLogin;
+import com.example.messenger.Authentication.Class.ImageUploader;
 import com.example.messenger.Authentication.MainActivity;
 import com.example.messenger.Authentication.Registration;
 import com.example.messenger.Model.Users;
@@ -52,6 +54,9 @@ import com.google.firebase.appcheck.FirebaseAppCheck;
 import com.google.firebase.appcheck.playintegrity.PlayIntegrityAppCheckProviderFactory;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException;
+import com.google.firebase.auth.FirebaseAuthInvalidUserException;
+import com.google.firebase.auth.FirebaseAuthRecentLoginRequiredException;
+import com.google.firebase.auth.FirebaseAuthUserCollisionException;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.auth.PhoneAuthCredential;
 import com.google.firebase.auth.PhoneAuthOptions;
@@ -93,8 +98,6 @@ public class Profile extends AppCompatActivity {
     private Dialog dialog;
     private EditText number1, number2, number3, number4, number5, number6;
     private Button btn_registration;
-
-
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -322,30 +325,20 @@ public class Profile extends AppCompatActivity {
     }
     // Метод получения всех логинов существующих пользователей
     private void fetchExistingUserLogins() {
-        Api apiService = retrofitService.getRetrofit().create(Api.class);
-
-        Call<List<String>> call = apiService.getUsersLogin();
-        call.enqueue(new Callback<List<String>>() {
+        GetUsersLogin getUsersLogin = new GetUsersLogin(); // Создать экземпляр класса
+        getUsersLogin.getUsersLogin(new GetUsersLogin.UsersLoginCallback() { // Изменено на getUsersLogin
             @Override
-            public void onResponse(Call<List<String>> call, Response<List<String>> response) {
-                if (response.isSuccessful() && response.body() != null) {
-                    // Если запрос успешен и тело ответа не пустое
-                    allLogins = response.body();
-                    Log.d("FetchLogins", "Логины успешно получены: " + allLogins);
-                } else {
-                    // Если ответ не успешен
-                    String errorMessage = response.errorBody() != null ? response.errorBody().toString() : "Unknown Error";
-                    Log.e("FetchLogins", "Ошибка получения логинов: " + errorMessage);
-                }
+            public void onSuccess(List<String> logins) {
+                allLogins = logins; // Полученные логины сохраняем в поля класса
+                Log.d("FetchLogins", "Логины успешно получены: " + allLogins);
             }
 
             @Override
-            public void onFailure(Call<List<String>> call, Throwable t) {
-                Log.e("FetchLogins", "Ошибка сети: " + t.getMessage());
+            public void onError(String errorMessage) {
+                Log.e("FetchLogins", "Ошибка получения логинов: " + errorMessage);
             }
         });
     }
-
     //Валидация логина
     private boolean isValidLogin(String login) {
         if (TextUtils.isEmpty(login)) {
@@ -372,8 +365,8 @@ public class Profile extends AppCompatActivity {
     }
 
     //Метод сохранения измененных данных пользователя
-    private void saveUserData(FirebaseUser user, String login, String photoUrl) {
-        if (user == null || (login != null && login.isEmpty()) || (photoUrl != null && photoUrl.isEmpty())) {
+    private void saveUserData(FirebaseUser currentUser, String login, String photoUrl) {
+        if (currentUser == null || (login != null && login.isEmpty()) || (photoUrl != null && photoUrl.isEmpty())) {
             Log.d("Валидация", "Данные имеют неправильный формат!");
             Toast.makeText(Profile.this, "Пожалуйста, заполните все обязательные поля.", Toast.LENGTH_SHORT).show();
             return;
@@ -387,18 +380,18 @@ public class Profile extends AppCompatActivity {
 
             // Проверяем, что номер не равен null и имеет правильный формат
             if (newPhoneNumber != null && newPhoneNumber.length() == 12) {
-                checkPhoneNumberAndVerify(newPhoneNumber, user, login, photoUrl); // Проверяем и аутентифицируем номер
+                checkPhoneNumberAndVerify(newPhoneNumber, currentUser, login, photoUrl); // Проверяем и аутентифицируем номер
             } else {
                 Toast.makeText(Profile.this, "Неверный формат номера телефона", Toast.LENGTH_SHORT).show();
             }
         } else {
             // Если номер не изменился, просто обновляем другие данные
-            updateUserProfile(user.getUid(), login, photoUrl, phoneNumber);
+            updateUserProfile(currentUser.getUid(), login, photoUrl, phoneNumber);
         }
     }
 
     // Метод проверки номера телефона и его аутентификации через Firebase
-    private void checkPhoneNumberAndVerify(String newPhoneNumber, FirebaseUser user, String login, String photoUrl) {
+    private void checkPhoneNumberAndVerify(String newPhoneNumber, FirebaseUser currentUser, String login, String photoUrl) {
         Api apiService = retrofitService.getRetrofit().create(Api.class);
         Call<Boolean> call = apiService.getPhoneNumber(newPhoneNumber);
         call.enqueue(new Callback<Boolean>() {
@@ -410,7 +403,7 @@ public class Profile extends AppCompatActivity {
                         showPhoneNumberExistsDialog(newPhoneNumber);
                     } else {
                         // Если номер не существует, отправляем код на новый номер
-                        showCodeInputDialog(newPhoneNumber, user, login, photoUrl);
+                        showCodeInputDialog(newPhoneNumber, currentUser, login, photoUrl);
                     }
                 } else {
                     Toast.makeText(Profile.this, "Ошибка при проверке номера телефона", Toast.LENGTH_SHORT).show();
@@ -445,7 +438,7 @@ public class Profile extends AppCompatActivity {
     }
 
     // Открытие диалога для ввода кода
-    private void showCodeInputDialog(String phoneNumber, FirebaseUser user, String login, String photoUrl) {
+    private void showCodeInputDialog(String phoneNumber, FirebaseUser currentUser, String login, String photoUrl) {
         dialog = new Dialog(this);
         dialog.setContentView(R.layout.activity_code);
 
@@ -458,7 +451,6 @@ public class Profile extends AppCompatActivity {
         number6 = dialog.findViewById(R.id.number6);
         btn_registration = dialog.findViewById(R.id.btn_registration);
 
-        // Инициализируем mCallbacks ДО вызова verifyPhoneNumber
         mCallbacks = new PhoneAuthProvider.OnVerificationStateChangedCallbacks() {
             @Override
             public void onVerificationCompleted(@NonNull PhoneAuthCredential phoneAuthCredential) {
@@ -473,7 +465,7 @@ public class Profile extends AppCompatActivity {
             @Override
             public void onCodeSent(@NonNull String verification, @NonNull PhoneAuthProvider.ForceResendingToken forceResendingToken) {
                 dialog.show();
-                setUpCodeEntry(verification, phoneNumber, user, login, photoUrl);
+                setUpCodeEntry(verification, phoneNumber, currentUser, login, photoUrl);
             }
         };
 
@@ -507,7 +499,7 @@ public class Profile extends AppCompatActivity {
     }
 
     // Установка обработчика для ввода кода
-    private void setUpCodeEntry(String verificationId, String newPhoneNumber, FirebaseUser user, String login, String photoUrl) {
+    private void setUpCodeEntry(String verificationId, String newPhoneNumber, FirebaseUser currentUser, String login, String photoUrl) {
         setEditTextAutoAdvance(number1, number2);
         setEditTextAutoAdvance(number2, number3);
         setEditTextAutoAdvance(number3, number4);
@@ -523,7 +515,7 @@ public class Profile extends AppCompatActivity {
                 Toast.makeText(Profile.this, "Введите полученный код", Toast.LENGTH_SHORT).show();
             } else {
                 PhoneAuthCredential credential = PhoneAuthProvider.getCredential(verificationId, inputCode);
-                signInWithPhoneAuthCredential(credential, newPhoneNumber, user, login, photoUrl);
+                signInWithPhoneAuthCredential(credential, newPhoneNumber, currentUser, login, photoUrl);
             }
         });
     }
@@ -545,26 +537,61 @@ public class Profile extends AppCompatActivity {
         });
     }
     // Метод для завершения аутентификации
-    private void signInWithPhoneAuthCredential(PhoneAuthCredential credential, String newPhoneNumber, FirebaseUser user, String login, String photoUrl) {
+    private void signInWithPhoneAuthCredential(PhoneAuthCredential credential, String newPhoneNumber, FirebaseUser currentUser, String login, String photoUrl) {
         mAuth.signInWithCredential(credential)
                 .addOnCompleteListener(this, task -> {
                     if (task.isSuccessful()) {
                         // Успешная аутентификация, обновляем номер в Firebase Auth
-                        user.updatePhoneNumber(credential)
-                                .addOnCompleteListener(updateTask -> {
-                                    if (updateTask.isSuccessful()) {
-                                        // Обновляем профиль с новым номером телефона
-                                        updateUserProfile(user.getUid(), login, photoUrl, newPhoneNumber);
-                                    } else {
-                                        Toast.makeText(Profile.this, "Ошибка при обновлении номера в Firebase", Toast.LENGTH_SHORT).show();
-                                    }
-                                });
+                        if (currentUser != null) {
+                            currentUser.updatePhoneNumber(credential)
+                                    .addOnCompleteListener(updateTask -> {
+                                        if (updateTask.isSuccessful()) {
+                                            // Обновляем профиль с новым номером телефона
+                                            updateUserProfile(currentUser.getUid(), login, photoUrl, newPhoneNumber);
+                                            Toast.makeText(this, "Номер телефона обновлен успешно", Toast.LENGTH_SHORT).show();
+                                        } else {
+                                            // Обработка возможных исключений
+                                            Exception exception = updateTask.getException();
+                                            if (exception instanceof FirebaseAuthUserCollisionException) {
+                                                Toast.makeText(this, "Этот номер уже привязан к другому аккаунту", Toast.LENGTH_SHORT).show();
+                                            } else if (exception instanceof FirebaseAuthInvalidUserException) {
+                                                Toast.makeText(this, "Ваш аккаунт был удалён или отключён", Toast.LENGTH_SHORT).show();
+                                            } else if (exception instanceof FirebaseAuthRecentLoginRequiredException) {
+                                                // Требуется повторная аутентификация
+                                                reauthenticateUser(currentUser, credential);
+                                            } else {
+                                                Toast.makeText(this, "Ошибка при обновлении номера в Firebase", Toast.LENGTH_SHORT).show();
+                                            }
+                                        }
+                                    });
+                        } else {
+                            Toast.makeText(this, "Пользователь не найден", Toast.LENGTH_SHORT).show();
+                        }
                     } else {
-                        Toast.makeText(Profile.this, "Ошибка аутентификации с помощью SMS", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(this, "Ошибка аутентификации с помощью SMS", Toast.LENGTH_SHORT).show();
                     }
                 });
         dialog.dismiss();
+    }
 
+    // Метод для повторной аутентификации пользователя
+    private void reauthenticateUser(FirebaseUser currentUser, PhoneAuthCredential credential) {
+        currentUser.reauthenticate(credential)
+                .addOnCompleteListener(reauthTask -> {
+                    if (reauthTask.isSuccessful()) {
+                        // Повторная аутентификация успешна, обновляем номер телефона снова
+                        currentUser.updatePhoneNumber(credential)
+                                .addOnCompleteListener(updateTask -> {
+                                    if (updateTask.isSuccessful()) {
+                                        Toast.makeText(this, "Номер телефона успешно обновлен после повторной аутентификации", Toast.LENGTH_SHORT).show();
+                                    } else {
+                                        Toast.makeText(this, "Ошибка при обновлении номера после повторной аутентификации", Toast.LENGTH_SHORT).show();
+                                    }
+                                });
+                    } else {
+                        Toast.makeText(this, "Ошибка повторной аутентификации", Toast.LENGTH_SHORT).show();
+                    }
+                });
     }
 
     // Метод обновления профиля пользователя с возможностью обновить номер телефона
@@ -621,51 +648,43 @@ public class Profile extends AppCompatActivity {
                     }
                 }
             });
-
-    // Метод установки
     private void uploadPhotoToStorage(FirebaseUser user) {
         if (selectedImageBitmap != null) {
-            //Конвертируем изображение
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            selectedImageBitmap.compress(Bitmap.CompressFormat.JPEG, 100, baos);
-            byte[] data = baos.toByteArray();
-
-            String imagePath = "users_profile_image/" + user.getUid() + ".jpg"; // Сохраняем путь к изображению
-            StorageReference imageRef = storageRef.child(imagePath);
-            //Сохраняем изображение в хранилище
-            UploadTask uploadTask = imageRef.putBytes(data);
-            uploadTask.addOnSuccessListener(taskSnapshot -> {
-                imageRef.getDownloadUrl().addOnSuccessListener(uri -> {
+            ImageUploader imageUploader = new ImageUploader();
+            imageUploader.uploadImage(user, selectedImageBitmap, new ImageUploader.ImageUploadCallback() {
+                @Override
+                public void onSuccess(String imageUrl) {
                     //В случае если выбрано новое изображение, то берем ссылку и отправляем ее с данными ползователя на сохранение
-                    newphotoUrl = uri.toString();
-                    saveUserData(user, loginBD, newphotoUrl);
-                    photoUrlBD=newphotoUrl;
-                });
-            }).addOnFailureListener(e -> {
-                Toast.makeText(Profile.this, "Ошибка загрузки изображения", Toast.LENGTH_SHORT).show();
+                    newphotoUrl = imageUrl;
+                    if(imageUrl != null) {
+                        saveUserData(user, loginBD, newphotoUrl);
+                        photoUrlBD = newphotoUrl;
+                    }
+                }
+
+                @Override
+                public void onError(String error) {
+                    Toast.makeText(Profile.this, "Ошибка загрузки изображения: " + error, Toast.LENGTH_SHORT).show();
+                }
             });
         } else {
-            //В случае если пользователь не выбирает изображение, то мы вносим изменения в бд
             saveUserData(user, loginBD, null);
         }
     }
 
-    //Удаление фото из хранилища
     private void deletePhotoFromStorage(String photoUrl) {
-        if (photoUrl != null) {
-            // Получить ссылку на файл, который нужно удалить
-            StorageReference photoRef = FirebaseStorage.getInstance().getReferenceFromUrl(photoUrl);
+        ImageUploader imageUploader = new ImageUploader();
+        imageUploader.deleteImage(photoUrl, new ImageUploader.ImageUploadCallback() {
+            @Override
+            public void onSuccess(String imageUrl) {
+                photoUrlBD = null; // Сброс URL после успешного удаления
+            }
 
-            // Удалить файл из Firebase Storage
-            photoRef.delete()
-                    .addOnSuccessListener(aVoid -> {
-                        Toast.makeText(Profile.this, "Изображение удалено!", Toast.LENGTH_SHORT).show();
-                        photoUrlBD = null;
-                    })
-                    .addOnFailureListener(e -> {
-                        Toast.makeText(Profile.this, "Ошибка при удалении старого изображения из хранилища: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                    });
-        }
+            @Override
+            public void onError(String error) {
+                Toast.makeText(Profile.this, "Ошибка удаления изображения: " + error, Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
     //Окно для подтверждения удаления

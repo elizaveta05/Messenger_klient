@@ -25,6 +25,8 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
+import com.example.messenger.Authentication.Class.CountryCodeHelper;
+import com.example.messenger.Authentication.Class.CountryList;
 import com.example.messenger.CustomSpinnerAdapter;
 import com.example.messenger.Model.Users;
 import com.example.messenger.PhoneTextWatcher;
@@ -59,10 +61,8 @@ public class Authorization extends AppCompatActivity {
     private EditText number1, number2, number3, number4, number5, number6;
     private Button btn_registration;
     private ImageButton btn_back;
-
     private FirebaseUser user;
     private RetrofitService retrofitService;
-
     private  String phoneNumber;
 
     @Override
@@ -90,15 +90,7 @@ public class Authorization extends AppCompatActivity {
             overridePendingTransition(0, 0); // Убрать анимацию перехода
         });
 
-        List<String> countries = new ArrayList<>();
-        countries.add("Выберите страну");
-        countries.add("Россия");
-        countries.add("США");
-        countries.add("Китай");
-        countries.add("Бразилия");
-        countries.add("Германия");
-        countries.add("Индия");
-        countries.add("Австралия");
+        List<String> countries = CountryList.getCountries();
 
         CustomSpinnerAdapter adapter = new CustomSpinnerAdapter(this, android.R.layout.simple_spinner_item, countries);
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
@@ -109,7 +101,7 @@ public class Authorization extends AppCompatActivity {
             @Override
             public void onItemSelected(AdapterView<?> parentView, View selectedItemView, int position, long id) {
                 String selectedCountry = countries.get(position);
-                String countryCode = getCountryCode(selectedCountry);
+                String countryCode = CountryCodeHelper.getCountryCode(selectedCountry);
                 et_number.setText("+" + countryCode);
             }
 
@@ -318,25 +310,5 @@ public class Authorization extends AppCompatActivity {
             }
         });
 
-    }
-    private String getCountryCode(String country) {
-        switch (country) {
-            case "Россия":
-                return "7";
-            case "США":
-                return "1";
-            case "Китай":
-                return "86";
-            case "Бразилия":
-                return "55";
-            case "Германия":
-                return "49";
-            case "Индия":
-                return "91";
-            case "Австралия":
-                return "61";
-            default:
-                return "";
-        }
     }
 }
