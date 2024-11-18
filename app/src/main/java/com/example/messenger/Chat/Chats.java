@@ -1,4 +1,4 @@
-package com.example.messenger;
+package com.example.messenger.Chat;
 
 import static android.content.ContentValues.TAG;
 
@@ -18,7 +18,12 @@ import androidx.core.view.WindowInsetsCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.example.messenger.Chat.Adapter.ChatsAdapter;
+import com.example.messenger.Model.Chat;
 import com.example.messenger.Model.Users;
+import com.example.messenger.PersonalChat;
+import com.example.messenger.Profile;
+import com.example.messenger.R;
 import com.example.messenger.Reotrfit.Api;
 import com.example.messenger.Reotrfit.RetrofitService;
 import com.google.firebase.auth.FirebaseAuth;

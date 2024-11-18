@@ -1,4 +1,4 @@
-package com.example.messenger;
+package com.example.messenger.Model;
 
 public class Chat {
     private String chatId;

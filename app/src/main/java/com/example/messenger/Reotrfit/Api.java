@@ -1,14 +1,12 @@
 package com.example.messenger.Reotrfit;
 
-import com.example.messenger.Chat;
-import com.example.messenger.Message;
+import com.example.messenger.Model.Chat;
+import com.example.messenger.Model.Message;
 import com.example.messenger.Model.Users;
 
 import java.util.List;
 
-import okhttp3.MultipartBody;
 import okhttp3.RequestBody;
-import okhttp3.ResponseBody;
 import retrofit2.Call;
 import retrofit2.http.Body;
 import retrofit2.http.DELETE;

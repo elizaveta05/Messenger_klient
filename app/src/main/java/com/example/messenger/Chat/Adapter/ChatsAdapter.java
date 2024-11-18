@@ -1,4 +1,4 @@
-package com.example.messenger;
+package com.example.messenger.Chat.Adapter;
 
 import android.content.Context;
 import android.view.LayoutInflater;
@@ -9,6 +9,8 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.example.messenger.Model.Chat;
+import com.example.messenger.R;
 import com.squareup.picasso.Picasso;
 
 import java.util.List;

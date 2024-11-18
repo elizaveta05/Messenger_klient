@@ -42,7 +42,7 @@ import com.example.messenger.Authentication.Authorization;
 import com.example.messenger.Authentication.Class.GetUsersLogin;
 import com.example.messenger.Authentication.Class.ImageUploader;
 import com.example.messenger.Authentication.MainActivity;
-import com.example.messenger.Authentication.Registration;
+import com.example.messenger.Chat.Chats;
 import com.example.messenger.Model.Users;
 import com.example.messenger.Reotrfit.Api;
 import com.example.messenger.Reotrfit.RetrofitService;
@@ -50,8 +50,6 @@ import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 import com.google.firebase.FirebaseException;
 import com.google.firebase.FirebaseTooManyRequestsException;
-import com.google.firebase.appcheck.FirebaseAppCheck;
-import com.google.firebase.appcheck.playintegrity.PlayIntegrityAppCheckProviderFactory;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException;
 import com.google.firebase.auth.FirebaseAuthInvalidUserException;
@@ -61,17 +59,11 @@ import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.auth.PhoneAuthCredential;
 import com.google.firebase.auth.PhoneAuthOptions;
 import com.google.firebase.auth.PhoneAuthProvider;
-import com.google.firebase.firestore.DocumentReference;
-import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
-import com.google.firebase.storage.UploadTask;
 import com.squareup.picasso.Picasso;
 
-import java.io.ByteArrayOutputStream;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import de.hdodenhof.circleimageview.CircleImageView;
@@ -275,8 +267,7 @@ public class Profile extends AppCompatActivity {
         loadUserData();
 
     }
-
-    //Метод получения данных пользователя
+    //Загрузка и вывод данных
     private void loadUserData() {
         if (currentUser != null) {
             String userId = currentUser.getUid(); // Получаем ID текущего пользователя
@@ -300,7 +291,10 @@ public class Profile extends AppCompatActivity {
                             photoUrlBD = String.valueOf(registeredUser.getImage_url());
 
                             et_login.setText(loginBD);
-                            et_phoneNumber.setText(phoneNumber);
+
+                            // Форматируем номер телефона
+                            String formattedPhoneNumber = formatPhoneNumber(phoneNumber);
+                            et_phoneNumber.setText(formattedPhoneNumber); // Устанавливаем отформатированный номер
 
                             // Загружаем фотографию
                             Picasso.get()
@@ -323,6 +317,26 @@ public class Profile extends AppCompatActivity {
             Toast.makeText(Profile.this, "Пользователь не аутентифицирован", Toast.LENGTH_SHORT).show();
         }
     }
+    //Вывод телефона в соответствующем формате
+    private String formatPhoneNumber(String phoneNumber) {
+        // Удаляем все символы, кроме цифр
+        String digits = phoneNumber.replaceAll("[^\\d]", "");
+
+        // Проверяем, что номер начинается с "7" и имеет 11 цифр
+        if (digits.length() == 11 && digits.startsWith("7")) {
+            return String.format("+%s %s %s-%s-%s",
+                    digits.substring(0, 1), // +
+                    digits.substring(1, 4), // 123
+                    digits.substring(4, 7), // 456
+                    digits.substring(7, 9), // 78
+                    digits.substring(9, 11) // 90
+            );
+        } else {
+            // Если формат неправильный, можно вернуть само значение или обработать ошибку
+            return phoneNumber; // Или любое другое значение по умолчанию
+        }
+    }
+
     // Метод получения всех логинов существующих пользователей
     private void fetchExistingUserLogins() {
         GetUsersLogin getUsersLogin = new GetUsersLogin(); // Создать экземпляр класса

@@ -17,6 +17,9 @@ import androidx.core.view.WindowInsetsCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.example.messenger.Chat.Adapter.MessageAdapter;
+import com.example.messenger.Chat.Chats;
+import com.example.messenger.Model.Message;
 import com.example.messenger.Model.Users;
 import com.example.messenger.Reotrfit.Api;
 import com.example.messenger.Reotrfit.RetrofitService;
