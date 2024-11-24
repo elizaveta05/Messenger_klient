@@ -6,6 +6,7 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.os.Bundle;
+import android.os.Handler;
 import android.provider.ContactsContract;
 import android.text.Editable;
 import android.text.TextWatcher;
@@ -29,6 +30,8 @@ import com.example.messenger.Model.Users;
 import com.example.messenger.PersonalChat;
 import com.example.messenger.Profile;
 import com.example.messenger.R;
+import com.example.messenger.Reotrfit.Api;
+import com.example.messenger.Reotrfit.RetrofitService;
 import com.example.messenger.UserAdapter;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
@@ -36,13 +39,19 @@ import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 
 import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 public class add_chats extends AppCompatActivity implements UserAdapter.OnUserClickListener {
     private ArrayList<Users> userList = new ArrayList<>();
     private UserAdapter userAdapter;
     private FirebaseUser currentUser;
     private Users user;
-
+    private RetrofitService retrofitService = new RetrofitService();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -54,6 +63,7 @@ public class add_chats extends AppCompatActivity implements UserAdapter.OnUserCl
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
             return insets;
         });
+        // Проверка разрешений и получение контактов
         accessToContacts();
         currentUser = FirebaseAuth.getInstance().getCurrentUser();
 
@@ -79,19 +89,29 @@ public class add_chats extends AppCompatActivity implements UserAdapter.OnUserCl
         EditText searchUsers = findViewById(R.id.search_users);
         searchUsers.setSingleLine(); // Устанавливаем одну строку для EditText
         searchUsers.addTextChangedListener(new TextWatcher() {
+            private Handler handler = new Handler();
+
             @Override
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
-            }
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
 
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
-                String query = s.toString().toLowerCase().trim(); // Преобразуем в нижний регистр и убираем пробелы
+                handler.removeCallbacksAndMessages(null); // Отменяем предыдущий запрос
+                String query = s.toString().trim();
+                if(query.length() >=3) {
+                    if (!query.isEmpty()) {
+                        handler.postDelayed(() -> fetchUsersByLogin(query), 300); // Задержка 300 мс
+                    } else {
+                        userList.clear();
+                        userAdapter.notifyDataSetChanged(); // Очищаем список при пустом вводе
+                    }
+                }
             }
 
             @Override
-            public void afterTextChanged(Editable s) {
-            }
+            public void afterTextChanged(Editable s) {}
         });
+
     }
 
     @Override
@@ -109,69 +129,103 @@ public class add_chats extends AppCompatActivity implements UserAdapter.OnUserCl
         }
     }
     public void accessToContacts() {
-        // Проверяем, было ли предоставлено разрешение на доступ к контактам
+        // Проверяем разрешение
         if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.READ_CONTACTS)
                 != PackageManager.PERMISSION_GRANTED) {
             // Если разрешение не предоставлено, запрашиваем его у пользователя
             ActivityCompat.requestPermissions(this,
                     new String[]{android.Manifest.permission.READ_CONTACTS}, 1);
         } else {
-            // Разрешение уже предоставлено, можно получить контакты
+            // Даже если разрешение уже предоставлено, всё равно получаем контакты
             getContacts();
         }
     }
 
-    // Обработчик результата запроса разрешения
+
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
-        // Вызываем метод суперкласса для выполнения стандартной обработки
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        // Проверяем, соответствует ли запрос разрешения, который мы сделали
-        if (requestCode == 1) {
-            // Если пользователь предоставил разрешение
-            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                // Получаем контакты
-                getContacts();
-            } else {
-                // Если разрешение отклонено, показываем сообщение пользователю
-                Toast.makeText(this, "Доступ к контактам отклонен", Toast.LENGTH_SHORT).show();
-            }
+        if (requestCode == 1 && grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            getContacts();
+        } else {
+            Toast.makeText(this, "Доступ к контактам отклонен", Toast.LENGTH_SHORT).show();
         }
     }
 
-    // Метод для получения списка контактов
     private void getContacts() {
-        // Создаем список для хранения контактов
         ArrayList<String> contactsList = new ArrayList<>();
-        // Выполняем запрос к содержимому (контент-провайдеру) для получения данных о контактах
         Cursor cursor = getContentResolver().query(
                 ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
-                null, null, null, null); // Получаем все номера телефонов
+                null, null, null, null);
 
         if (cursor != null) {
-            // Получаем индексы для имени и номера телефона из курсора
-            int nameIndex = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME);
             int phoneIndex = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER);
-
-            // Проходим по всем записям в курсоре
             while (cursor.moveToNext()) {
-                // Проверяем, что индексы не равны -1, что означает, что соответствующие столбцы существуют
-                if (nameIndex != -1 && phoneIndex != -1) {
-                    // Извлекаем имя и номер телефона из текущей записи
-                    String name = cursor.getString(nameIndex);
-                    String phoneNumber = cursor.getString(phoneIndex);
-                    // Добавляем контакт в список в формате "Имя: Номер"
-                    contactsList.add(name + ": " + phoneNumber);
+                if (phoneIndex != -1) {
+                    String phoneNumber = cursor.getString(phoneIndex).replaceAll("\\s+", "");
+                    contactsList.add(phoneNumber);
                 }
             }
-            // Закрываем курсор для освобождения ресурсов
             cursor.close();
         }
 
-        // Для каждого контакта в списке выводим его в лог
-        for (String contact : contactsList) {
-            Log.d(TAG, "Contact: " + contact);
-        }
+        // Отправляем номера на сервер для получения профилей
+        fetchProfilesFromServer(contactsList);
+    }
+
+    private void fetchProfilesFromServer(ArrayList<String> contactsList) {
+
+        Api apiService = retrofitService.getRetrofit().create(Api.class);
+        Call<List<Users>> call = apiService.searchContacts(contactsList);
+
+        call.enqueue(new Callback<List<Users>>() {
+            @Override
+            public void onResponse(Call<List<Users>> call, Response<List<Users>> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    userList.clear();
+                    userList.addAll(response.body());
+                    userAdapter.notifyDataSetChanged();
+                } else {
+                    Toast.makeText(add_chats.this, "Ошибка загрузки данных", Toast.LENGTH_SHORT).show();
+                }
+            }
+
+            @Override
+            public void onFailure(Call<List<Users>> call, Throwable t) {
+                Log.e("add_chats", "Ошибка: " + t.getMessage());
+                Toast.makeText(add_chats.this, "Ошибка подключения", Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private void fetchUsersByLogin(String query) {
+        Api apiService = retrofitService.getRetrofit().create(Api.class);
+        Call<List<Users>> call = apiService.searchByLogin(query);
+
+        call.enqueue(new Callback<List<Users>>() {
+            @Override
+            public void onResponse(Call<List<Users>> call, Response<List<Users>> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    // Фильтруем полученные профили, исключая текущего пользователя
+                    String currentUserId = currentUser != null ? currentUser.getUid() : null;
+                    List<Users> filteredUsers = response.body().stream()
+                            .filter(user -> !user.getUserId().equals(currentUserId))
+                            .collect(Collectors.toList());
+
+                    userList.clear();
+                    userList.addAll(filteredUsers);
+                    userAdapter.notifyDataSetChanged();
+                } else {
+                    Toast.makeText(add_chats.this, "Пользователи не найдены", Toast.LENGTH_SHORT).show();
+                }
+            }
+
+            @Override
+            public void onFailure(Call<List<Users>> call, Throwable t) {
+                Log.e("add_chats", "Ошибка: " + t.getMessage());
+                Toast.makeText(add_chats.this, "Ошибка подключения", Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
 }

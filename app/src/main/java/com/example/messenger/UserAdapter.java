@@ -1,6 +1,7 @@
 package com.example.messenger;
 
 import android.content.Context;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -14,6 +15,10 @@ import com.example.messenger.Model.Users;
 import com.squareup.picasso.Picasso;
 
 import java.util.ArrayList;
+
+import de.hdodenhof.circleimageview.CircleImageView;
+import com.google.firebase.storage.FirebaseStorage;
+import com.google.firebase.storage.StorageReference;
 
 public class UserAdapter extends RecyclerView.Adapter<UserAdapter.UserViewHolder> {
     private Context context;
@@ -35,6 +40,7 @@ public class UserAdapter extends RecyclerView.Adapter<UserAdapter.UserViewHolder
 
     public void setUserList(ArrayList<Users> user) {
         userList = user;
+        notifyDataSetChanged();
     }
 
     @Override
@@ -43,21 +49,18 @@ public class UserAdapter extends RecyclerView.Adapter<UserAdapter.UserViewHolder
 
         holder.tvName.setText(user.getLogin());
 
-        /*
-        if (user.getPhotoUrl() != null) {
-
+        // Загрузка изображения пользователя
+        if (user.getImage_url() != null && !user.getImage_url().isEmpty()) {
+            // Если URL изображения пользователя доступен
             Picasso.get()
-                    .load(user.getPhotoData())
+                    .load(user.getImage_url())
                     .placeholder(R.drawable.icon_user)
                     .error(R.drawable.icon_user)
                     .into(holder.image_photo_user);
-
-
         } else {
-            holder.image_photo_user.setImageResource(R.drawable.icon_user);
+            // Если изображения нет, пытаемся загрузить его из Firebase Storage
+            loadImageFromFirebaseStorage(user.getUserId(), holder.image_photo_user);
         }
-        
-         */
 
         holder.itemView.setOnClickListener(v -> {
             if (onUserClickListener != null) {
@@ -71,9 +74,28 @@ public class UserAdapter extends RecyclerView.Adapter<UserAdapter.UserViewHolder
         return userList.size();
     }
 
+    // Метод для загрузки изображения из Firebase Storage
+    private void loadImageFromFirebaseStorage(String userId, CircleImageView imageView) {
+        if (userId == null || userId.isEmpty()) return;
+
+        StorageReference storageReference = FirebaseStorage.getInstance()
+                .getReference("users_profile_image/" + userId + ".jpg");
+
+        storageReference.getDownloadUrl().addOnSuccessListener(uri -> {
+            Picasso.get()
+                    .load(uri)
+                    .placeholder(R.drawable.icon_user)
+                    .error(R.drawable.icon_user)
+                    .into(imageView);
+        }).addOnFailureListener(e -> {
+            Log.e("UserAdapter", "Failed to load image for userId: " + userId, e);
+            imageView.setImageResource(R.drawable.icon_user);
+        });
+    }
+
     public static class UserViewHolder extends RecyclerView.ViewHolder {
         TextView tvName;
-        ImageView image_photo_user;
+        CircleImageView image_photo_user;
 
         public UserViewHolder(View itemView) {
             super(itemView);

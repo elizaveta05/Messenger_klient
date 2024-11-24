@@ -1,6 +1,7 @@
 package com.example.messenger.Chat.Adapter;
 
 import android.content.Context;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -11,6 +12,8 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.messenger.Model.Chat;
 import com.example.messenger.R;
+import com.google.firebase.storage.FirebaseStorage;
+import com.google.firebase.storage.StorageReference;
 import com.squareup.picasso.Picasso;
 
 import java.util.List;
@@ -40,17 +43,18 @@ public class ChatsAdapter extends RecyclerView.Adapter<ChatsAdapter.ViewHolder> 
         Chat chat = chatList.get(position);
 
         holder.userName.setText(chat.getUserLogin());
-
         holder.userMessage.setText(chat.getLastMessage());
 
         if (chat.getUserImage() != null) {
+            // Устанавливаем изображение через Picasso
             Picasso.get()
                     .load(chat.getUserImage())
                     .placeholder(R.drawable.icon_user)
                     .error(R.drawable.icon_user)
                     .into(holder.userImage);
         } else {
-            holder.userImage.setImageResource(R.drawable.icon_user);
+            // Если ссылки на изображение нет, пробуем загрузить из Firebase Storage
+            loadImageFromFirebaseStorage(chat.getUserId(), holder.userImage);
         }
 
         holder.itemView.setOnClickListener(v -> {
@@ -63,6 +67,25 @@ public class ChatsAdapter extends RecyclerView.Adapter<ChatsAdapter.ViewHolder> 
     @Override
     public int getItemCount() {
         return chatList.size();
+    }
+
+    // Метод для загрузки изображения из Firebase Storage
+    private void loadImageFromFirebaseStorage(String userId, CircleImageView imageView) {
+        if (userId == null || userId.isEmpty()) return;
+
+        StorageReference storageReference = FirebaseStorage.getInstance()
+                .getReference("users_profile_image/" + userId + ".jpg");
+
+        storageReference.getDownloadUrl().addOnSuccessListener(uri -> {
+            Picasso.get()
+                    .load(uri)
+                    .placeholder(R.drawable.icon_user)
+                    .error(R.drawable.icon_user)
+                    .into(imageView);
+        }).addOnFailureListener(e -> {
+            Log.e("ChatsAdapter", "Failed to load image for userId: " + userId, e);
+            imageView.setImageResource(R.drawable.icon_user);
+        });
     }
 
     public class ViewHolder extends RecyclerView.ViewHolder {

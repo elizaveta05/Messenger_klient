@@ -16,6 +16,7 @@ import retrofit2.http.POST;
 import retrofit2.http.PUT;
 import retrofit2.http.Part;
 import retrofit2.http.Path;
+import retrofit2.http.Query;
 
 
 public interface Api {
@@ -50,6 +51,11 @@ public interface Api {
     @PUT("/users/updateUserProfile/{userId}")
     Call<Users> updateUserProfile(@Path("userId") String userId, @Body Users user);
 
+    //Метод проверки списка контактов
+    @POST("/search/contacts")
+    Call<List<Users>> searchContacts(@Body List<String> contacts);
+    @GET("/search/by-login")
+    Call<List<Users>> searchByLogin(@Query("query") String query);
 
     @GET("/app/getAllChatsForUser/{senderId}")
     Call<List<Chat>> getAllChatsForUser(@Path("senderId") String senderId);
