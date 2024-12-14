@@ -54,11 +54,20 @@ public interface Api {
     //Метод проверки списка контактов
     @POST("/search/contacts")
     Call<List<Users>> searchContacts(@Body List<String> contacts);
+
+    //Метод получения "недавних чатов" для конкретного юзера
+    @GET("/chats/getAllChatsForUser/{userId}")
+    Call<List<Chat>> getAllChatsForUser(@Path("userId") String userId);
+
+
+
+
+
+
     @GET("/search/by-login")
     Call<List<Users>> searchByLogin(@Query("query") String query);
 
-    @GET("/app/getAllChatsForUser/{senderId}")
-    Call<List<Chat>> getAllChatsForUser(@Path("senderId") String senderId);
+
     @GET("/app/getUserById/{userId}")
     Call<Users> getUserById(@Path("userId") String userId);
 

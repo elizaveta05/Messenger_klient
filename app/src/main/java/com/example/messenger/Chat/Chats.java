@@ -20,7 +20,6 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.messenger.Chat.Adapter.ChatsAdapter;
 import com.example.messenger.Model.Chat;
-import com.example.messenger.Model.Users;
 import com.example.messenger.PersonalChat;
 import com.example.messenger.Profile;
 import com.example.messenger.R;
@@ -28,11 +27,7 @@ import com.example.messenger.Reotrfit.Api;
 import com.example.messenger.Reotrfit.RetrofitService;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
-import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
 
-import java.io.IOException;
-import java.lang.reflect.Type;
 import java.util.List;
 
 import retrofit2.Call;
@@ -44,130 +39,74 @@ public class Chats extends AppCompatActivity {
     private ImageButton btn_profile, btn_add;
     private RecyclerView recyclerView;
     private ChatsAdapter adapter;
-
+    private List<Chat> chatList;
     private FirebaseUser currentUser;
-    private String senderId;
     private ProgressBar progressBar;
+    private RetrofitService retrofitService = new RetrofitService();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // Разрешить использование функции EdgeToEdge
         EdgeToEdge.enable(this);
-
-        // Установить макет для этой активности
         setContentView(R.layout.activity_chats);
 
-        // Применить настройки краевых областей для области содержимого 'main'
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
             return insets;
         });
 
-        // Получить текущего пользователя из Firebase
         currentUser = FirebaseAuth.getInstance().getCurrentUser();
-
-        senderId= currentUser.getUid().toString();
-
         progressBar = findViewById(R.id.progressBar);
-        // Настроить кнопку для перехода на профиль
         btn_profile = findViewById(R.id.btn_profile);
-        btn_profile.setOnClickListener(v->{
-            Intent intent = new Intent(Chats.this, Profile.class);
-            startActivity(intent);
-            // Убрать анимацию перехода
-            overridePendingTransition(0, 0);
-        });
-
-        // Настроить кнопку для добавления чата
         btn_add = findViewById(R.id.btn_add);
-        btn_add.setOnClickListener(v->{
-            Intent intent = new Intent(Chats.this, add_chats.class);
-            startActivity(intent);
-            // Убрать анимацию перехода
+
+        btn_profile.setOnClickListener(v -> {
+            startActivity(new Intent(Chats.this, Profile.class));
             overridePendingTransition(0, 0);
         });
 
-        // Настроить RecyclerView для отображения списка чатов
+        btn_add.setOnClickListener(v -> {
+            startActivity(new Intent(Chats.this, add_chats.class));
+            overridePendingTransition(0, 0);
+        });
+
         recyclerView = findViewById(R.id.allContacts);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
 
-
-        if(senderId != null) {
-            // Установить соединение по WebSocket
-            connectWebSocket(senderId);
-        }
-
+        // Загружаем чаты для текущего пользователя
+        loadChats();
     }
 
-    // Метод для установки соединения по WebSocket
-    private void connectWebSocket(String senderId) {
-        RetrofitService retrofitService = new RetrofitService();
-        Api api = retrofitService.getRetrofit().create(Api.class);
-        api.getAllChatsForUser(senderId).enqueue(new Callback<List<Chat>>() {
+    // Метод для загрузки чатов
+    private void loadChats() {
+        progressBar.setVisibility(View.VISIBLE);
+        Api apiService = retrofitService.getRetrofit().create(Api.class);
+
+        Call<List<Chat>> call = apiService.getAllChatsForUser(currentUser.getUid());
+        call.enqueue(new Callback<List<Chat>>() {
             @Override
             public void onResponse(Call<List<Chat>> call, Response<List<Chat>> response) {
-                if (response.isSuccessful()) {
-                    Log.i(TAG, "Request successful");
-                    Gson gson = new Gson();
-                    String chatListJson = gson.toJson(response.body());
-                    setupRecyclerView(chatListJson);
-                } else {
-                    try {
-                        Log.e(TAG, "Request failed. Error message: " + response.errorBody().string());
-                        Log.e(TAG, "Response code: " + response.code());
-                    } catch (IOException e) {
-                        Log.e(TAG, "Error reading error body", e);
-                    }
-                }
-            }
-            @Override
-            public void onFailure(Call<List<Chat>> call, Throwable throwable) {
-                if (throwable instanceof IOException) {
-                    Log.e(TAG, "Network error", throwable);
-                } else {
-                    Log.e(TAG, "Request failed", throwable);
-                }
-            }
-        });
-    }
-    private void setupRecyclerView(String chatsJson) {
-        Gson gson = new Gson();
-        Type chatListType = new TypeToken<List<Chat>>() {}.getType();
-        List<Chat> chatList = gson.fromJson(chatsJson, chatListType);
-
-        adapter = new ChatsAdapter(this, chatList, chat -> {
-            // Обращение к серверу для получения данных выбранного пользователя
-            fetchUserDataFromServer(chat.getUserId());
-        });
-
-        // Скрыть progressBar
-        progressBar.setVisibility(View.GONE);
-
-        recyclerView.setAdapter(adapter);
-        adapter.notifyDataSetChanged();  // Обновляем данные в списке
-    }
-    private void fetchUserDataFromServer(String userId) {
-        RetrofitService retrofitService = new RetrofitService();
-        Api api = retrofitService.getRetrofit().create(Api.class);
-        api.getUserById(userId).enqueue(new Callback<Users>() {
-            @Override
-            public void onResponse(Call<Users> call, Response<Users> response) {
+                progressBar.setVisibility(View.GONE);
                 if (response.isSuccessful() && response.body() != null) {
-                    Users selectedUser = response.body();
-
-                    Intent intent = new Intent(Chats.this, PersonalChat.class);
-                    intent.putExtra("selectedUser", selectedUser);
-                    startActivity(intent);
+                    chatList = response.body();
+                    adapter = new ChatsAdapter(Chats.this, chatList, chat -> {
+                        Intent intent = new Intent(Chats.this, PersonalChat.class);
+                        intent.putExtra("chatId", chat.getChatId());
+                        startActivity(intent);
+                    });
+                    recyclerView.setAdapter(adapter);
                 } else {
-                    Toast.makeText(Chats.this, "Failed to get user data", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(Chats.this, "Нет доступных чатов", Toast.LENGTH_SHORT).show();
                 }
             }
+
             @Override
-            public void onFailure(Call<Users> call, Throwable throwable) {
-                Toast.makeText(Chats.this, "Error fetching user data", Toast.LENGTH_SHORT).show();
+            public void onFailure(Call<List<Chat>> call, Throwable t) {
+                progressBar.setVisibility(View.GONE); // Скрываем прогресс бар
+                Log.e(TAG, "Ошибка при загрузке чатов: " + t.getMessage());
+                Toast.makeText(Chats.this, "Ошибка при загрузке чатов", Toast.LENGTH_SHORT).show();
             }
         });
     }
