@@ -1,55 +1,54 @@
 package com.example.messenger.Model;
 
+import java.sql.Timestamp;
 import java.time.Instant;
 
 public class Message {
-    private String content;
-    private String senderId;
-    private String receiverId;
-    private Instant timestamp;
+    private Integer message_id;
+    private Integer chat_id;
+    private String sender_user;
+    private String message_text;
+    private Timestamp time_stamp;
 
-
-    public Message(String content, String senderId, String receiverId, Instant timestamp) {
-        this.content = content;
-        this.senderId = senderId;
-        this.receiverId = receiverId;
-        this.timestamp = timestamp;
+    // Геттеры и сеттеры
+    public Integer getMessageId() {
+        return message_id;
     }
 
-    public Message() {
-
+    public void setMessageId(Integer message_id) {
+        this.message_id = message_id;
     }
 
-    public String getSenderId() {
-        return senderId;
+    public Integer getChatId() {
+        return chat_id;
     }
 
-    public void setSenderId(String senderId) {
-        this.senderId = senderId;
+    public void setChatId(Integer chat_id) {
+        this.chat_id = chat_id;
     }
 
-    public String getContent() {
-        return content;
+    public String getUserSend() {
+        return sender_user;
     }
 
-    public void setContent(String content) {
-        this.content = content;
+    public void setUserSend(String sender_user) {
+        this.sender_user = sender_user;
     }
 
-    public String getReceiverId() {
-        return receiverId;
+    public String getMessageText() {
+        return message_text;
     }
 
-    public void setReceiverId(String receiverId) {
-        this.receiverId = receiverId;
+    public void setMessageText(String message_text) {
+        this.message_text = message_text;
     }
 
-    public Instant getTimestamp() {
-        return timestamp;
+    public Timestamp getTime_stamp() {
+        return time_stamp;
     }
 
-    public void setTimestamp(Instant timestamp) {
-        this.timestamp = timestamp;
+    public void setTimeCreated(Timestamp time_stamp) {
+        this.time_stamp = time_stamp;
     }
 
 }

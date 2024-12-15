@@ -26,6 +26,8 @@ import com.example.messenger.Reotrfit.RetrofitService;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -40,7 +42,6 @@ public class PersonalChat extends AppCompatActivity {
     private MessageAdapter messageAdapter;
     private List<Message> messageList;
     private FirebaseUser currentUser;
-    private String senderId;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -56,7 +57,6 @@ public class PersonalChat extends AppCompatActivity {
         // Получить текущего пользователя из Firebase
         currentUser = FirebaseAuth.getInstance().getCurrentUser();
 
-        senderId= currentUser.getUid().toString();
         selectedUser = getIntent().getParcelableExtra("selectedUser");
         etMessage = findViewById(R.id.et_messege);
         recyclerView = findViewById(R.id.recycler_view);
@@ -74,7 +74,6 @@ public class PersonalChat extends AppCompatActivity {
         btn_back.setOnClickListener(v -> {
             Intent intent = new Intent(PersonalChat.this, Chats.class);
             startActivity(intent);
-            // Убрать анимацию перехода
             overridePendingTransition(0, 0);
         });
 
@@ -82,82 +81,43 @@ public class PersonalChat extends AppCompatActivity {
         btnSend.setOnClickListener(v -> {
             String messageContent = etMessage.getText().toString().trim();
             if (!messageContent.isEmpty()) {
-                sendMessageToServer(messageContent, selectedUser.getUserId());  // Отправка сообщения на сервер
+                sendMessageToServer(messageContent);  // Отправка сообщения на сервер
                 etMessage.setText(""); // Очищаем поле ввода после отправки
             }
         });
-        if (senderId != null) {
-            connectWebSocket(senderId, selectedUser.getUserId());
-        }
+
     }
-    // Метод для установки соединения по WebSocket
-    private void connectWebSocket(String senderId, String recipientId) {
+    private void sendMessageToServer(String messageContent) {
+        // Инициализация сервиса Retrofit
         RetrofitService retrofitService = new RetrofitService();
         Api api = retrofitService.getRetrofit().create(Api.class);
-        api.getAllMessage(senderId, recipientId).enqueue(new Callback<List<Message>>() {
+
+        // Получаем текущую дату и время
+        LocalDateTime now = LocalDateTime.now();
+
+        // Форматируем дату
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+        String formattedDate = now.format(formatter);
+
+        // Вызов метода API
+        Call<String> call = api.createChatAndSendMessage(currentUser.getUid().toString(), selectedUser.getUserId().toString(), messageContent, formattedDate);
+        call.enqueue(new Callback<String>() {
             @Override
-            public void onResponse(Call<List<Message>> call, Response<List<Message>> response) {
-                if (response.isSuccessful()) {
-                    Log.i(TAG, "Request successful");
-                    List<Message> messages = response.body();
-                    if (messages != null) {
-                        setupRecyclerView(messages);
-                    } else {
-                        Log.e(TAG, "Received null message list from server");
-                    }
-                } else {
-                    Log.e(TAG, "Request failed: " + response.message());
-                }
-            }
-
-            @Override
-            public void onFailure(Call<List<Message>> call, Throwable throwable) {
-                Log.e(TAG, "Request failed: " + throwable.getMessage());
-            }
-        });
-    }
-
-    private void setupRecyclerView(List<Message> messages) {
-        messageList.clear();
-        messageList.addAll(messages);
-
-        if (messageAdapter == null) {
-            messageAdapter = new MessageAdapter(messageList, currentUser.getUid());
-            recyclerView.setAdapter(messageAdapter);
-        } else {
-            messageAdapter.notifyDataSetChanged();
-        }
-
-        if (messageList.size() > 0) {
-            recyclerView.smoothScrollToPosition(messageList.size() - 1);
-        }
-    }
-    private void sendMessageToServer(String message, String recipientId) {
-        // Создание экземпляра RetrofitService
-        RetrofitService retrofitService = new RetrofitService();
-        // Получение экземпляра Api через Retrofit
-        Api api = retrofitService.getRetrofit().create(Api.class);
-        // Отправка сообщения на сервер с использованием Retrofit
-        api.sendMessage(currentUser.getUid(), recipientId, message).enqueue(new Callback<List<Message>>() {
-            @Override
-            public void onResponse(Call<List<Message>> call, Response<List<Message>> response) {
+            public void onResponse(Call<String> call, Response<String> response) {
                 if (response.isSuccessful() && response.body() != null) {
+                    Log.d(TAG, "Сообщение успешно отправлено на сервер: " + response.body());
 
-                    messageList.addAll(response.body());
 
-                    recyclerView.post(() -> {
-                        messageAdapter.notifyDataSetChanged();
-                        recyclerView.smoothScrollToPosition(messageList.size() - 1);
-                    });
                 } else {
-                    Log.e(TAG, "Запрос не удался: " + response.message());
+                    Log.e(TAG, "Ошибка при отправке сообщения: " + response.code());
                 }
             }
+
             @Override
-            public void onFailure(Call<List<Message>> call, Throwable throwable) {
-                // Логирование сообщения об ошибке в случае сбоя запроса
-                Log.e(TAG, "Не удалось выполнить запрос: " + throwable.getMessage());
+            public void onFailure(Call<String> call, Throwable t) {
+                Log.e(TAG, "Ошибка соединения: " + t.getMessage());
             }
         });
     }
+
 }

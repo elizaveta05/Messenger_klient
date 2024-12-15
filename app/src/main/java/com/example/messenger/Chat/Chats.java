@@ -18,8 +18,8 @@ import androidx.core.view.WindowInsetsCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.example.messenger.Chat.Adapter.ChatsAdapter;
-import com.example.messenger.Model.Chat;
+import com.example.messenger.Chat.Adapter.RecentChatsAdapter;
+import com.example.messenger.Model.RecentChats;
 import com.example.messenger.PersonalChat;
 import com.example.messenger.Profile;
 import com.example.messenger.R;
@@ -38,8 +38,8 @@ public class Chats extends AppCompatActivity {
 
     private ImageButton btn_profile, btn_add;
     private RecyclerView recyclerView;
-    private ChatsAdapter adapter;
-    private List<Chat> chatList;
+    private RecentChatsAdapter adapter; // Исправлено с RecentChats на RecentChatsAdapter
+    private List<RecentChats> chatList;
     private FirebaseUser currentUser;
     private ProgressBar progressBar;
     private RetrofitService retrofitService = new RetrofitService();
@@ -82,31 +82,44 @@ public class Chats extends AppCompatActivity {
     // Метод для загрузки чатов
     private void loadChats() {
         progressBar.setVisibility(View.VISIBLE);
+
+        if (currentUser == null) {
+            Toast.makeText(this, "Пользователь не авторизован.", Toast.LENGTH_SHORT).show();
+            progressBar.setVisibility(View.GONE);
+            return;
+        }
+
+        // Получаем экземпляр API
         Api apiService = retrofitService.getRetrofit().create(Api.class);
 
-        Call<List<Chat>> call = apiService.getAllChatsForUser(currentUser.getUid());
-        call.enqueue(new Callback<List<Chat>>() {
+        // Выполняем вызов API
+        Call<List<RecentChats>> call = apiService.getAllChatsForUser(currentUser.getUid());
+        call.enqueue(new Callback<List<RecentChats>>() {
             @Override
-            public void onResponse(Call<List<Chat>> call, Response<List<Chat>> response) {
+            public void onResponse(Call<List<RecentChats>> call, Response<List<RecentChats>> response) {
                 progressBar.setVisibility(View.GONE);
+
                 if (response.isSuccessful() && response.body() != null) {
                     chatList = response.body();
-                    adapter = new ChatsAdapter(Chats.this, chatList, chat -> {
+
+                    // Передаем данные в адаптер
+                    adapter = new RecentChatsAdapter(Chats.this, chatList, chat -> {
+                        // Обработка клика по чату
                         Intent intent = new Intent(Chats.this, PersonalChat.class);
-                        intent.putExtra("chatId", chat.getChatId());
+                        intent.putExtra("otherUserId", chat.getUserId());
                         startActivity(intent);
                     });
+
                     recyclerView.setAdapter(adapter);
                 } else {
-                    Toast.makeText(Chats.this, "Нет доступных чатов", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(Chats.this, "Не удалось загрузить чаты", Toast.LENGTH_SHORT).show();
                 }
             }
 
             @Override
-            public void onFailure(Call<List<Chat>> call, Throwable t) {
-                progressBar.setVisibility(View.GONE); // Скрываем прогресс бар
-                Log.e(TAG, "Ошибка при загрузке чатов: " + t.getMessage());
-                Toast.makeText(Chats.this, "Ошибка при загрузке чатов", Toast.LENGTH_SHORT).show();
+            public void onFailure(Call<List<RecentChats>> call, Throwable t) {
+                progressBar.setVisibility(View.GONE);
+                Toast.makeText(Chats.this, "Ошибка загрузки данных: " + t.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
     }

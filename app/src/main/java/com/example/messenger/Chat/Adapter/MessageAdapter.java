@@ -1,5 +1,6 @@
 package com.example.messenger.Chat.Adapter;
 
+import android.annotation.SuppressLint;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -15,8 +16,8 @@ import java.text.SimpleDateFormat;
 import java.util.List;
 
 public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.MessageViewHolder> {
-    private List<Message> messageList;
-    private String currentUserId;
+    private final List<Message> messageList;
+    private final String currentUserId;
 
     public MessageAdapter(List<Message> messageList, String currentUserId) {
         this.messageList = messageList;
@@ -29,7 +30,7 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.MessageV
     @Override
     public int getItemViewType(int position) {
         Message message = messageList.get(position);
-        if (message.getSenderId().equals(currentUserId)) {
+        if (message.getUserSend().equals(currentUserId)) {
             return MESSAGE_SENT;
         } else {
             return MESSAGE_RECEIVED;
@@ -51,10 +52,10 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.MessageV
     public void onBindViewHolder(@NonNull MessageViewHolder holder, int position) {
         Message message = messageList.get(position);
 
-        holder.tvMessage.setText(message.getContent());
+        holder.tvMessage.setText(message.getMessageText());
 
-        SimpleDateFormat dateFormat = new SimpleDateFormat("HH:mm");
-        holder.tvTime.setText(dateFormat.format(message.getTimestamp()));
+        @SuppressLint("SimpleDateFormat") SimpleDateFormat dateFormat = new SimpleDateFormat("HH:mm");
+        holder.tvTime.setText(dateFormat.format(message.getTime_stamp()));
     }
 
     @Override

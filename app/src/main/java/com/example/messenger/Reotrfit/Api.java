@@ -2,6 +2,7 @@ package com.example.messenger.Reotrfit;
 
 import com.example.messenger.Model.Chat;
 import com.example.messenger.Model.Message;
+import com.example.messenger.Model.RecentChats;
 import com.example.messenger.Model.Users;
 
 import java.util.List;
@@ -10,6 +11,8 @@ import okhttp3.RequestBody;
 import retrofit2.Call;
 import retrofit2.http.Body;
 import retrofit2.http.DELETE;
+import retrofit2.http.Field;
+import retrofit2.http.FormUrlEncoded;
 import retrofit2.http.GET;
 import retrofit2.http.Multipart;
 import retrofit2.http.POST;
@@ -55,14 +58,18 @@ public interface Api {
     @POST("/search/contacts")
     Call<List<Users>> searchContacts(@Body List<String> contacts);
 
-    //Метод получения "недавних чатов" для конкретного юзера
-    @GET("/chats/getAllChatsForUser/{userId}")
-    Call<List<Chat>> getAllChatsForUser(@Path("userId") String userId);
-
-
-
-
-
+    //Метод по созданию чата/сохранению сообщения
+    @FormUrlEncoded
+    @POST("/chats/createChatAndSendMessage")
+    Call<String> createChatAndSendMessage(
+            @Field("chatUserOwner") String chatUserOwner,
+            @Field("otherUser") String otherUser,
+            @Field("messageText") String messageText,
+            @Field("timeCreated") String timeCreated
+    );
+    // Метод получения всех чатов для пользователя
+    @GET("/chats/getAllChatsForUser")
+    Call<List<RecentChats>> getAllChatsForUser(@Query("userId") String userId);
 
     @GET("/search/by-login")
     Call<List<Users>> searchByLogin(@Query("query") String query);
