@@ -1,17 +1,19 @@
 package com.example.messenger.Model;
 
 import com.google.firebase.Timestamp;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 public class RecentChats {
 
-    private Integer chatId; // Идентификатор чата со стороны владельца
-    private String userId; // Идентификатор пользователя с которым есть чат
+    private Integer chatId;
+    private String userId;
     private String login;
     private String image_url;
-    private String userSend; // Пользователь-отправитель
-    private String messageText; // Текст сообщения
-    private Timestamp timeStamp; // Время отправки сообщения
-
+    private String userSend;
+    private String messageText;
+    private String timeStamp;
     // Геттеры
     public Integer getChatId() {
         return chatId;
@@ -37,8 +39,20 @@ public class RecentChats {
         return messageText;
     }
 
-    public Timestamp getTimeStamp() {
+    public String getTimeStamp() {
         return timeStamp;
+    }
+
+    // Дополнительный метод для получения даты
+    public Date getTimeStampAsDate() {
+        if (timeStamp != null) {
+            try {
+                return new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSXXX").parse(timeStamp);
+            } catch (ParseException e) {
+                e.printStackTrace();
+            }
+        }
+        return null;
     }
 
     // Сеттеры
@@ -66,7 +80,7 @@ public class RecentChats {
         this.messageText = messageText;
     }
 
-    public void setTimeStamp(Timestamp timeStamp) {
+    public void setTimeStamp(String timeStamp) {
         this.timeStamp = timeStamp;
     }
 }

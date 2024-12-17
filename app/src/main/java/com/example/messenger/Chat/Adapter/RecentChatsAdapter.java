@@ -59,8 +59,8 @@ public class RecentChatsAdapter extends RecyclerView.Adapter<RecentChatsAdapter.
         holder.userMessage.setText(messageText);
 
         // Форматируем время отправки сообщения
-        if (chat.getTimeStamp() != null) {
-            String formattedTime = formatMessageTime(chat.getTimeStamp());
+        if (chat.getTimeStampAsDate() != null) {
+            String formattedTime = formatMessageTime(chat.getTimeStampAsDate());
             holder.userLastMessageTime.setText(formattedTime);
         }
 
@@ -86,13 +86,13 @@ public class RecentChatsAdapter extends RecyclerView.Adapter<RecentChatsAdapter.
     /**
      * Форматирует время сообщения в зависимости от текущей даты.
      */
-    private String formatMessageTime(Timestamp timeStamp) {
+    private String formatMessageTime(java.util.Date timeStamp) {
         SimpleDateFormat todayFormat = new SimpleDateFormat("HH:mm", Locale.getDefault());
         SimpleDateFormat dateFormat = new SimpleDateFormat("dd MMM", Locale.getDefault());
 
         // Получаем текущее время
         long now = System.currentTimeMillis();
-        long messageTimeMillis = timeStamp.toDate().getTime();
+        long messageTimeMillis = timeStamp.getTime();
 
         // Сравниваем даты
         SimpleDateFormat checkDateFormat = new SimpleDateFormat("yyyyMMdd", Locale.getDefault());
@@ -107,7 +107,6 @@ public class RecentChatsAdapter extends RecyclerView.Adapter<RecentChatsAdapter.
             return dateFormat.format(messageTimeMillis);
         }
     }
-
 
     @Override
     public int getItemCount() {

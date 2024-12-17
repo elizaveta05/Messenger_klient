@@ -38,7 +38,7 @@ public class Chats extends AppCompatActivity {
 
     private ImageButton btn_profile, btn_add;
     private RecyclerView recyclerView;
-    private RecentChatsAdapter adapter; // Исправлено с RecentChats на RecentChatsAdapter
+    private RecentChatsAdapter adapter;
     private List<RecentChats> chatList;
     private FirebaseUser currentUser;
     private ProgressBar progressBar;
@@ -119,6 +119,7 @@ public class Chats extends AppCompatActivity {
             @Override
             public void onFailure(Call<List<RecentChats>> call, Throwable t) {
                 progressBar.setVisibility(View.GONE);
+                Log.e("ChatsActivity", "Ошибка загрузки данных", t);
                 Toast.makeText(Chats.this, "Ошибка загрузки данных: " + t.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
