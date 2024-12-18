@@ -1,11 +1,14 @@
 package com.example.messenger.Model;
 
+import android.os.Parcel;
+import android.os.Parcelable;
+
 import com.google.firebase.Timestamp;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
-public class RecentChats {
+public class RecentChats implements Parcelable {
 
     private Integer chatId;
     private String userId;
@@ -31,9 +34,6 @@ public class RecentChats {
         return image_url;
     }
 
-    public String getUserSend() {
-        return userSend;
-    }
 
     public String getMessageText() {
         return messageText;
@@ -72,10 +72,6 @@ public class RecentChats {
         this.image_url = image_url;
     }
 
-    public void setUserSend(String userSend) {
-        this.userSend = userSend;
-    }
-
     public void setMessageText(String messageText) {
         this.messageText = messageText;
     }
@@ -83,4 +79,44 @@ public class RecentChats {
     public void setTimeStamp(String timeStamp) {
         this.timeStamp = timeStamp;
     }
+    public RecentChats(String userSend) {
+        this.userSend = userSend;
+    }
+
+    // Геттер
+    public String getUserSend() {
+        return userSend;
+    }
+
+    // Сеттер
+    public void setUserSend(String userSend) {
+        this.userSend = userSend;
+    }
+
+    // Parcelable реализация
+    protected RecentChats(Parcel in) {
+        userSend = in.readString();
+    }
+
+    @Override
+    public void writeToParcel(Parcel dest, int flags) {
+        dest.writeString(userSend);
+    }
+
+    @Override
+    public int describeContents() {
+        return 0;
+    }
+
+    public static final Parcelable.Creator<RecentChats> CREATOR = new Creator<RecentChats>() {
+        @Override
+        public RecentChats createFromParcel(Parcel in) {
+            return new RecentChats(in);
+        }
+
+        @Override
+        public RecentChats[] newArray(int size) {
+            return new RecentChats[size];
+        }
+    };
 }

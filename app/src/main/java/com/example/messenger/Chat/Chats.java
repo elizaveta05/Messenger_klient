@@ -4,14 +4,17 @@ import static android.content.ContentValues.TAG;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.CountDownTimer;
 import android.util.Log;
 import android.view.View;
 import android.widget.ImageButton;
 import android.widget.ProgressBar;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.PopupMenu;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
@@ -25,11 +28,14 @@ import com.example.messenger.Profile;
 import com.example.messenger.R;
 import com.example.messenger.Reotrfit.Api;
 import com.example.messenger.Reotrfit.RetrofitService;
+import com.google.android.material.bottomsheet.BottomSheetDialog;
+import com.google.android.material.snackbar.Snackbar;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 
 import java.util.List;
 
+import okhttp3.ResponseBody;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
@@ -101,14 +107,15 @@ public class Chats extends AppCompatActivity {
 
                 if (response.isSuccessful() && response.body() != null) {
                     chatList = response.body();
-
-                    // Передаем данные в адаптер
                     adapter = new RecentChatsAdapter(Chats.this, chatList, chat -> {
-                        // Обработка клика по чату
                         Intent intent = new Intent(Chats.this, PersonalChat.class);
-                        intent.putExtra("otherUserId", chat.getUserId());
+                        intent.putExtra("userSend", chat.getUserSend());
                         startActivity(intent);
+                    }, (view, chat) -> {
+                        showBottomSheetMenu(chat);
                     });
+
+
 
                     recyclerView.setAdapter(adapter);
                 } else {
@@ -124,4 +131,91 @@ public class Chats extends AppCompatActivity {
             }
         });
     }
+    private void showBottomSheetMenu(RecentChats chat) {
+        BottomSheetDialog bottomSheetDialog = new BottomSheetDialog(this);
+        View sheetView = getLayoutInflater().inflate(R.layout.bottom_sheet_menu, null);
+        bottomSheetDialog.setContentView(sheetView);
+
+        sheetView.findViewById(R.id.menu_archive).setOnClickListener(v -> {
+            archiveChat(chat);
+            bottomSheetDialog.dismiss();
+        });
+
+        sheetView.findViewById(R.id.menu_delete).setOnClickListener(v -> {
+            deleteChat(chat);
+            bottomSheetDialog.dismiss();
+        });
+
+        sheetView.findViewById(R.id.menu_block).setOnClickListener(v -> {
+            blockUser(chat);
+            bottomSheetDialog.dismiss();
+        });
+
+        bottomSheetDialog.show();
+    }
+
+    private void archiveChat(RecentChats chat) {
+        // Логика для архивирования чата
+        Toast.makeText(this, "Чат архивирован: " + chat.getLogin(), Toast.LENGTH_SHORT).show();
+    }
+
+    private void deleteChat(RecentChats chat) {
+        // Убираем чат из списка для визуального эффекта
+        chatList.remove(chat);
+        adapter.notifyDataSetChanged();
+
+        // Показываем Snackbar с кнопкой отмены
+        Snackbar snackbar = Snackbar.make(recyclerView, "Чат удалён", Snackbar.LENGTH_LONG);
+        snackbar.setAction("Отменить", v -> {
+            // Восстановить чат в списке
+            chatList.add(chat);
+            adapter.notifyDataSetChanged();
+            Toast.makeText(this, "Удаление отменено", Toast.LENGTH_SHORT).show();
+        });
+
+        snackbar.addCallback(new Snackbar.Callback() {
+            @Override
+            public void onDismissed(Snackbar transientBottomBar, int event) {
+                if (event != Snackbar.Callback.DISMISS_EVENT_ACTION) {
+                    // Если пользователь не нажал "Отменить", удаляем чат через API
+                    performChatDeletion(chat);
+                }
+            }
+        });
+
+        snackbar.show();
+    }
+
+    // Метод для вызова API удаления чата
+    private void performChatDeletion(RecentChats chat) {
+        progressBar.setVisibility(View.VISIBLE);
+
+        Api apiService = retrofitService.getRetrofit().create(Api.class);
+        Call<ResponseBody> call = apiService.deleteChat(currentUser.getUid(), chat.getChatId());
+        call.enqueue(new Callback<ResponseBody>() {
+            @Override
+            public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
+                progressBar.setVisibility(View.GONE);
+
+                if (response.isSuccessful()) {
+                    Toast.makeText(Chats.this, "Чат успешно удалён.", Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(Chats.this, "Ошибка удаления чата: " + response.message(), Toast.LENGTH_SHORT).show();
+                }
+            }
+
+            @Override
+            public void onFailure(Call<ResponseBody> call, Throwable t) {
+                progressBar.setVisibility(View.GONE);
+                Log.e("ChatsActivity", "Ошибка удаления чата", t);
+                Toast.makeText(Chats.this, "Ошибка удаления чата: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private void blockUser(RecentChats chat) {
+        // Логика для блокировки пользователя
+        Toast.makeText(this, "Пользователь заблокирован: " + chat.getLogin(), Toast.LENGTH_SHORT).show();
+    }
+
 }

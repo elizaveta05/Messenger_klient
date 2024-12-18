@@ -8,6 +8,7 @@ import com.example.messenger.Model.Users;
 import java.util.List;
 
 import okhttp3.RequestBody;
+import okhttp3.ResponseBody;
 import retrofit2.Call;
 import retrofit2.http.Body;
 import retrofit2.http.DELETE;
@@ -74,6 +75,8 @@ public interface Api {
     @GET("/search/by-login")
     Call<List<Users>> searchByLogin(@Query("query") String query);
 
+    @DELETE("/deleteChat")
+    Call<ResponseBody> deleteChat(@Query("userId") String userId, @Query("chatId") Integer chatId);
 
     @GET("/app/getUserById/{userId}")
     Call<Users> getUserById(@Path("userId") String userId);

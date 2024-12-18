@@ -121,7 +121,7 @@ public class add_chats extends AppCompatActivity implements UserAdapter.OnUserCl
                 Toast.makeText(this, "Это вы!!!", Toast.LENGTH_SHORT).show();
             } else {
                 Intent intent = new Intent(add_chats.this, PersonalChat.class);
-                intent.putExtra("selectedUser", user);
+                intent.putExtra("userSend", user.getUserId());
                 startActivity(intent);
             }
         } else {
