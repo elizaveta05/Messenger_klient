@@ -31,7 +31,7 @@
         android:theme="@style/Theme.Messenger"
         tools:targetApi="31">
         <activity
-            android:name=".PersonalChat"
+            android:name=".PersonalChat.PersonalChat"
             android:windowSoftInputMode="adjustResize"
         android:exported="false" />
         <activity
@@ -41,7 +41,7 @@
             android:name=".Chat.Chats"
             android:exported="false" />
         <activity
-            android:name=".Profile"
+            android:name=".Profile.Profile"
             android:exported="false" />
         <activity
             android:name=".Authentication.Registration"

@@ -1,4 +1,4 @@
-package com.example.messenger;
+package com.example.messenger.Profile;
 
 import static android.app.ProgressDialog.show;
 
@@ -44,6 +44,7 @@ import com.example.messenger.Authentication.Class.ImageUploader;
 import com.example.messenger.Authentication.MainActivity;
 import com.example.messenger.Chat.Chats;
 import com.example.messenger.Model.Users;
+import com.example.messenger.R;
 import com.example.messenger.Reotrfit.Api;
 import com.example.messenger.Reotrfit.RetrofitService;
 import com.google.android.material.textfield.TextInputEditText;

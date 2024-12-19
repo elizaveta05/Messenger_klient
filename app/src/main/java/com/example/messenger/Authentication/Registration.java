@@ -26,15 +26,13 @@ import androidx.activity.result.ActivityResultCallback;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
-import com.example.messenger.Authentication.Class.CountryList;
 import com.example.messenger.Authentication.Class.GetUsersLogin;
 import com.example.messenger.Authentication.Class.ImageUploader;
 import com.example.messenger.CustomSpinnerAdapter;
-import com.example.messenger.PhoneTextWatcher;
-import com.example.messenger.Profile;
+import com.example.messenger.Profile.PhoneTextWatcher;
+import com.example.messenger.Profile.Profile;
 import com.example.messenger.R;
 import com.example.messenger.Model.Users;
 import com.example.messenger.Reotrfit.Api;
@@ -50,17 +48,12 @@ import com.google.firebase.auth.PhoneAuthOptions;
 import com.google.firebase.auth.PhoneAuthProvider;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
-import com.google.firebase.storage.UploadTask;
 
-import java.io.ByteArrayOutputStream;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import okhttp3.MediaType;
-import okhttp3.MultipartBody;
 import okhttp3.RequestBody;
-import okhttp3.ResponseBody;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;

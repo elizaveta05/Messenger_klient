@@ -25,18 +25,15 @@ import androidx.core.view.WindowInsetsCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import android.Manifest;
 import com.example.messenger.Model.Users;
-import com.example.messenger.PersonalChat;
-import com.example.messenger.Profile;
+import com.example.messenger.PersonalChat.PersonalChat;
+import com.example.messenger.Profile.Profile;
 import com.example.messenger.R;
 import com.example.messenger.Reotrfit.Api;
 import com.example.messenger.Reotrfit.RetrofitService;
 import com.example.messenger.UserAdapter;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.firestore.FirebaseFirestore;
-import com.google.firebase.firestore.QueryDocumentSnapshot;
 
 import java.util.ArrayList;
 import java.util.List;

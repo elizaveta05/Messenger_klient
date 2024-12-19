@@ -88,7 +88,7 @@ public class RecentChatsAdapter extends RecyclerView.Adapter<RecentChatsAdapter.
 
         // Проверка, отправлено ли сообщение текущим пользователем
         String messageText = chat.getMessageText();
-        if (chat.getUserSend() != null && chat.getUserSend().equals(chat.getUserId())) {
+        if (!(chat.getUserId().equals(chat.getUserSend()))) {
             messageText = "Ты: " + messageText;
         }
 

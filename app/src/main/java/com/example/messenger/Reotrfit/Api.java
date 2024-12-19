@@ -75,11 +75,23 @@ public interface Api {
     @GET("/search/by-login")
     Call<List<Users>> searchByLogin(@Query("query") String query);
 
-    @DELETE("/deleteChat")
+    @DELETE("/chats/deleteChat")
     Call<ResponseBody> deleteChat(@Query("userId") String userId, @Query("chatId") Integer chatId);
+
+    @GET("/message/getMessageHistory")
+    Call<List<Message>> getMessageHistory(@Query("userId") String userId, @Query("chatId") Integer chatId);
+
+    @GET("/chats/getChatId")
+    Call<String> getChatId(@Query("chatUserOwner") String chatUserOwner, @Query("otherUser") String otherUser);
+
+
+
+
+
 
     @GET("/app/getUserById/{userId}")
     Call<Users> getUserById(@Path("userId") String userId);
+
 
     @POST("/chat/{senderId}/{recipientId}/{message}")
     Call<List<Message>> sendMessage(@Path("senderId") String senderId, @Path("recipientId") String recipientId, @Body String message);

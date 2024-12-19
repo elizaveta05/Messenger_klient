@@ -6,30 +6,17 @@
     android:layout_height="wrap_content"
     android:background="@color/white">
 
-    <de.hdodenhof.circleimageview.CircleImageView
-        android:id="@+id/image_photo_user"
-        android:layout_width="40dp"
-        android:layout_height="40dp"
-        android:layout_gravity="center"
-        android:scaleType="centerCrop"
-        android:src="@drawable/icon_user"
-        app:civ_border_color="#CCCCCC"
-        app:civ_border_width="2dp"
-        app:layout_constraintBottom_toBottomOf="@+id/tv_message"
-        app:layout_constraintStart_toStartOf="parent" />
-
     <TextView
         android:id="@+id/tv_message"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginStart="3dp"
         android:layout_marginTop="4dp"
         android:background="@drawable/background_reception"
         android:padding="12dp"
         android:text="Полученное сообщение"
         android:textColor="@color/black"
         android:textSize="16sp"
-        app:layout_constraintStart_toEndOf="@+id/image_photo_user"
+        app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
     <TextView

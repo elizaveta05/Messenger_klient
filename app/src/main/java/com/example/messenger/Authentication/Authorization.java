@@ -29,8 +29,8 @@ import com.example.messenger.Authentication.Class.CountryCodeHelper;
 import com.example.messenger.Authentication.Class.CountryList;
 import com.example.messenger.CustomSpinnerAdapter;
 import com.example.messenger.Model.Users;
-import com.example.messenger.PhoneTextWatcher;
-import com.example.messenger.Profile;
+import com.example.messenger.Profile.PhoneTextWatcher;
+import com.example.messenger.Profile.Profile;
 import com.example.messenger.R;
 import com.example.messenger.Reotrfit.Api;
 import com.example.messenger.Reotrfit.RetrofitService;
@@ -43,7 +43,6 @@ import com.google.firebase.auth.PhoneAuthCredential;
 import com.google.firebase.auth.PhoneAuthOptions;
 import com.google.firebase.auth.PhoneAuthProvider;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 

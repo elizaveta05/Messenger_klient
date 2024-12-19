@@ -1,4 +1,4 @@
-package com.example.messenger;
+package com.example.messenger.PersonalChat;
 
 import static android.content.ContentValues.TAG;
 
@@ -18,11 +18,11 @@ import androidx.core.view.WindowInsetsCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.example.messenger.Chat.Adapter.MessageAdapter;
+import com.example.messenger.PersonalChat.Adapter.MessageAdapter;
 import com.example.messenger.Chat.Chats;
 import com.example.messenger.Model.Message;
-import com.example.messenger.Model.RecentChats;
 import com.example.messenger.Model.Users;
+import com.example.messenger.R;
 import com.example.messenger.Reotrfit.Api;
 import com.example.messenger.Reotrfit.RetrofitService;
 import com.google.firebase.auth.FirebaseAuth;
@@ -38,6 +38,7 @@ import de.hdodenhof.circleimageview.CircleImageView;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
+import retrofit2.http.Query;
 
 public class PersonalChat extends AppCompatActivity {
     private Users selectedUser;
@@ -50,6 +51,8 @@ public class PersonalChat extends AppCompatActivity {
     private CircleImageView image_photo_user2;
     private RetrofitService retrofitService = new RetrofitService();
     private String userSend;
+    private Integer chatId;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -71,18 +74,25 @@ public class PersonalChat extends AppCompatActivity {
         // Получить текущего пользователя из Firebase
         currentUser = FirebaseAuth.getInstance().getCurrentUser();
 
-        // Получение объекта RecentChats
+        // Инициализация списка и адаптера
+        messageList = new ArrayList<>();
+        messageAdapter = new MessageAdapter(new ArrayList<>(), currentUser.getUid(), message -> {
+            // Обработчик клика по сообщению (если нужен)
+            Toast.makeText(this, "Клик по сообщению: " + message.getMessageText(), Toast.LENGTH_SHORT).show();
+        });
+        recyclerView.setLayoutManager(new LinearLayoutManager(this));
+        recyclerView.setAdapter(messageAdapter);
+
         userSend = getIntent().getStringExtra("userSend");
+
+        // Получение id чата и истории сообщений
         if (userSend != null) {
             Log.d("ReceivedUserSend", userSend);
             getprofileUser(userSend);
+            getChatId(currentUser.getUid(), userSend); // Получаем chatId и историю сообщений
         } else {
             Toast.makeText(this, "Ошибка: не удалось получить отправителя", Toast.LENGTH_SHORT).show();
         }
-
-        messageList = new ArrayList<>();
-        messageAdapter = new MessageAdapter(messageList, currentUser.getUid());
-        recyclerView.setLayoutManager(new LinearLayoutManager(this));
 
         ImageButton btn_back = findViewById(R.id.btn_back);
         btn_back.setOnClickListener(v -> {
@@ -99,6 +109,15 @@ public class PersonalChat extends AppCompatActivity {
                 etMessage.setText(""); // Очищаем поле ввода после отправки
             }
         });
+    }
+    // Метод обновления данных для адаптера с датами
+    private void updateMessageAdapter(List<Message> messages) {
+        // Преобразуем список сообщений в список объектов с разделением по датам
+        List<Object> formattedMessages = MessageAdapter.prepareMessageList(messages);
+        // Обновляем данные в адаптере
+        messageAdapter.setMessageList(formattedMessages);
+        // Скроллим к последнему сообщению
+        recyclerView.scrollToPosition(formattedMessages.size() - 1);
     }
 
     // Метод получения данных о пользователе (изображение, логин)
@@ -154,5 +173,57 @@ public class PersonalChat extends AppCompatActivity {
             }
         });
     }
+    // Метод по получению id чата
+    private void getChatId(String chatUserOwner, String otherUser) {
+        Api api = retrofitService.getRetrofit().create(Api.class);
+        Call<String> call = api.getChatId(chatUserOwner, otherUser);
+
+        call.enqueue(new Callback<String>() {
+            @Override
+            public void onResponse(Call<String> call, Response<String> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    chatId = Integer.valueOf(response.body());
+                    Log.d(TAG, "Chat ID найден: " + chatId);
+                    getMessageHistory(chatUserOwner, chatId); // Получить историю сообщений
+                } else {
+                    Log.e(TAG, "Чат не найден, код ответа: " + response.code());
+                    Toast.makeText(PersonalChat.this, "Чат не найден", Toast.LENGTH_SHORT).show();
+                }
+            }
+
+            @Override
+            public void onFailure(Call<String> call, Throwable t) {
+                Log.e(TAG, "Ошибка сети при получении chatId: " + t.getMessage());
+                Toast.makeText(PersonalChat.this, "Ошибка сети", Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    // Метод по получению истории сообщений в чате
+    private void getMessageHistory(String userId, Integer chatId) {
+        Api api = retrofitService.getRetrofit().create(Api.class);
+        Call<List<Message>> call = api.getMessageHistory(userId, chatId);
+
+        call.enqueue(new Callback<List<Message>>() {
+            @Override
+            public void onResponse(Call<List<Message>> call, Response<List<Message>> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    List<Message> messages = response.body();
+                    updateMessageAdapter(messages);
+                    Log.d(TAG, "История сообщений успешно загружена: " + messages.size() + " сообщений");
+                } else {
+                    Log.e(TAG, "Ошибка загрузки сообщений, код ответа: " + response.code());
+                    Toast.makeText(PersonalChat.this, "Ошибка загрузки сообщений", Toast.LENGTH_SHORT).show();
+                }
+            }
+
+            @Override
+            public void onFailure(Call<List<Message>> call, Throwable t) {
+                Log.e(TAG, "Ошибка сети при загрузке истории сообщений: " + t.getMessage());
+                Toast.makeText(PersonalChat.this, "Ошибка сети", Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
 
 }

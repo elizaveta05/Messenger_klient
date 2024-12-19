@@ -1,20 +1,15 @@
 package com.example.messenger.Chat;
 
-import static android.content.ContentValues.TAG;
-
 import android.content.Intent;
 import android.os.Bundle;
-import android.os.CountDownTimer;
 import android.util.Log;
 import android.view.View;
 import android.widget.ImageButton;
 import android.widget.ProgressBar;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.widget.PopupMenu;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
@@ -23,8 +18,8 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.messenger.Chat.Adapter.RecentChatsAdapter;
 import com.example.messenger.Model.RecentChats;
-import com.example.messenger.PersonalChat;
-import com.example.messenger.Profile;
+import com.example.messenger.PersonalChat.PersonalChat;
+import com.example.messenger.Profile.Profile;
 import com.example.messenger.R;
 import com.example.messenger.Reotrfit.Api;
 import com.example.messenger.Reotrfit.RetrofitService;
@@ -109,7 +104,7 @@ public class Chats extends AppCompatActivity {
                     chatList = response.body();
                     adapter = new RecentChatsAdapter(Chats.this, chatList, chat -> {
                         Intent intent = new Intent(Chats.this, PersonalChat.class);
-                        intent.putExtra("userSend", chat.getUserSend());
+                        intent.putExtra("userSend", chat.getUserId());
                         startActivity(intent);
                     }, (view, chat) -> {
                         showBottomSheetMenu(chat);

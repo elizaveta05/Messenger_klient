@@ -1,4 +1,4 @@
-package com.example.messenger;
+package com.example.messenger.Profile;
 
 import android.text.Editable;
 import android.text.TextWatcher;
