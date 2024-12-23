@@ -33,7 +33,7 @@
         <activity
             android:name=".PersonalChat.PersonalChat"
             android:windowSoftInputMode="adjustResize"
-        android:exported="false" />
+            android:exported="false" />
         <activity
             android:name=".Chat.add_chats"
             android:exported="false" />

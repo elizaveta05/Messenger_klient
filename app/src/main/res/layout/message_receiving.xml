@@ -10,12 +10,15 @@
         android:id="@+id/tv_message"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
+        android:layout_marginStart="10dp"
+        android:layout_marginTop="6dp"
+        android:layout_marginBottom="6dp"
         android:background="@drawable/background_reception"
         android:padding="12dp"
         android:text="Полученное сообщение"
         android:textColor="@color/black"
         android:textSize="16sp"
+        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
@@ -23,9 +26,11 @@
         android:id="@+id/tv_time"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="28dp"
+        android:layout_marginStart="3dp"
+        android:layout_marginBottom="6dp"
         android:text="Время"
         android:textColor="@color/black"
-        app:layout_constraintStart_toEndOf="@+id/tv_message"
-        app:layout_constraintTop_toTopOf="parent" />
+        android:textSize="10sp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toEndOf="@+id/tv_message" />
 </androidx.constraintlayout.widget.ConstraintLayout>

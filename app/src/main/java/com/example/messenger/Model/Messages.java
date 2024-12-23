@@ -5,20 +5,25 @@ import java.sql.Timestamp;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 
-public class Message {
-    @SerializedName("message_id")
+import com.google.gson.annotations.SerializedName;
+import java.sql.Timestamp;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+
+public class Messages {
+    @SerializedName("messageId")
     private Integer message_id;
 
-    @SerializedName("chat_id")
+    @SerializedName("chatId")
     private Integer chat_id;
 
-    @SerializedName("sender_user")
+    @SerializedName("userSend")
     private String sender_user;
 
-    @SerializedName("message_text")
+    @SerializedName("messageText")
     private String message_text;
 
-    @SerializedName("time_stamp")
+    @SerializedName("timeStamp")
     private String time_stamp;
 
     // Геттеры и сеттеры
@@ -54,13 +59,14 @@ public class Message {
         this.message_text = message_text;
     }
 
-    public String getTime_stamp() {
+    public String getTimeStamp() {
         return time_stamp;
     }
 
-    public void setTimeCreated(String time_stamp) {
+    public void setTimeStamp(String time_stamp) {
         this.time_stamp = time_stamp;
     }
+
     public Timestamp getTimeStampAsTimestamp() {
         try {
             SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");

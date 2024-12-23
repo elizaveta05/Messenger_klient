@@ -1,7 +1,7 @@
 package com.example.messenger.Reotrfit;
 
 import com.example.messenger.Model.Chat;
-import com.example.messenger.Model.Message;
+import com.example.messenger.Model.Messages;
 import com.example.messenger.Model.RecentChats;
 import com.example.messenger.Model.Users;
 
@@ -79,7 +79,7 @@ public interface Api {
     Call<ResponseBody> deleteChat(@Query("userId") String userId, @Query("chatId") Integer chatId);
 
     @GET("/message/getMessageHistory")
-    Call<List<Message>> getMessageHistory(@Query("userId") String userId, @Query("chatId") Integer chatId);
+    Call<List<Messages>> getMessageHistory(@Query("userId") String userId, @Query("chatId") Integer chatId);
 
     @GET("/chats/getChatId")
     Call<String> getChatId(@Query("chatUserOwner") String chatUserOwner, @Query("otherUser") String otherUser);
@@ -94,8 +94,8 @@ public interface Api {
 
 
     @POST("/chat/{senderId}/{recipientId}/{message}")
-    Call<List<Message>> sendMessage(@Path("senderId") String senderId, @Path("recipientId") String recipientId, @Body String message);
+    Call<List<Messages>> sendMessage(@Path("senderId") String senderId, @Path("recipientId") String recipientId, @Body String message);
 
     @GET("/app//fetchAllMessage/{senderId}/{recipientId}")
-    Call<List<Message>> getAllMessage(@Path("senderId") String senderId, @Path("recipientId") String recipientId);
+    Call<List<Messages>> getAllMessage(@Path("senderId") String senderId, @Path("recipientId") String recipientId);
 }
